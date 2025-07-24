@@ -35,12 +35,11 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     loadingProgress: 0
   });
 
-  const isInitializedRef = useRef(false);
-
   useEffect(() => {
-    if (!containerRef.current || isInitializedRef.current) return;
+    if (!containerRef.current) return;
 
-    isInitializedRef.current = true;
+    // 每次cameraId变化时都重新初始化
+    cleanup(); // 先清理之前的资源
     initializePanorama();
 
     // 添加ESC键监听
@@ -68,7 +67,6 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('resize', handleResize);
-      isInitializedRef.current = false;
       cleanup();
     };
   }, [cameraId, onEscape]);
@@ -78,7 +76,8 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
    */
   const initializePanorama = async () => {
     try {
-      setState(prev => ({ ...prev, isLoading: true, error: null, loadingProgress: 0 }));
+      console.log(`🚀 Initializing panorama for camera ${cameraId}`);
+      setState({ isLoading: true, error: null, loadingProgress: 0 });
 
       // 移除冗余的初始化日志
       // console.log('Initializing 360° panorama viewer for camera:', cameraId);
@@ -122,12 +121,23 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
 
       // 加载纹理
       const textureLoader = new THREE.TextureLoader();
+      console.log(`🔄 Loading texture: ${imageUrl}`);
+
       const texture = await new Promise<THREE.Texture>((resolve, reject) => {
         textureLoader.load(
           imageUrl,
-          resolve,
-          undefined,
-          reject
+          (loadedTexture) => {
+            console.log(`✅ Texture loaded successfully: ${imageUrl}`);
+            console.log(`Texture size: ${loadedTexture.image.width}x${loadedTexture.image.height}`);
+            resolve(loadedTexture);
+          },
+          (progress) => {
+            console.log(`📊 Texture loading progress: ${(progress.loaded / progress.total * 100).toFixed(1)}%`);
+          },
+          (error) => {
+            console.error(`❌ Failed to load texture: ${imageUrl}`, error);
+            reject(error);
+          }
         );
       });
 
@@ -137,27 +147,34 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       const geometry = new THREE.SphereGeometry(500, 60, 40);
       // 翻转几何体，让纹理显示在内表面
       geometry.scale(-1, 1, 1);
+      console.log(`📐 Sphere geometry created: radius=500, segments=60x40`);
 
       // 创建材质
       const material = new THREE.MeshBasicMaterial({
         map: texture
       });
+      console.log(`🎨 Material created with texture`);
 
       // 创建球体网格
       const sphere = new THREE.Mesh(geometry, material);
       sphereRef.current = sphere;
       scene.add(sphere);
+      console.log(`🌐 Sphere added to scene`);
 
       setState(prev => ({ ...prev, loadingProgress: 75 }));
 
       // 设置相机初始位置 (在球心)
       camera.position.set(0, 0, 0.1); // 稍微偏移避免在正中心
 
+      // 设置相机初始朝向 - 朝向+X轴方向 (与蓝色球体的+X轴一致)
+      camera.lookAt(1, 0, 0);
+      console.log('Initial camera lookAt: (1, 0, 0) - should be +X axis direction');
+
       // 添加到DOM
       containerRef.current.innerHTML = '';
       containerRef.current.appendChild(renderer.domElement);
 
-      // 设置鼠标控制
+      // 设置鼠标控制，传入初始朝向
       setupMouseControls(camera, renderer.domElement);
 
       // 开始渲染循环
@@ -212,14 +229,38 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
   };
 
   /**
+   * 更新相机旋转
+   */
+  const updateCameraRotation = (camera: THREE.PerspectiveCamera, lon: number, lat: number) => {
+    // 将角度转换为弧度
+    const phi = THREE.MathUtils.degToRad(90 - lat);   // 垂直角度 (从上往下)
+    const theta = THREE.MathUtils.degToRad(lon);      // 水平角度 (从+X轴开始)
+
+    // 计算朝向向量 (球坐标转笛卡尔坐标)
+    // 注意：这里调整坐标系，使得 lon=0 对应+X轴方向
+    const x = Math.sin(phi) * Math.cos(theta);
+    const y = Math.cos(phi);
+    const z = Math.sin(phi) * Math.sin(theta);
+
+    // 设置相机朝向
+    camera.lookAt(x, y, z);
+
+    console.log(`Camera rotation: lon=${lon}°, lat=${lat}° → lookAt(${x.toFixed(3)}, ${y.toFixed(3)}, ${z.toFixed(3)})`);
+  };
+
+  /**
    * 设置鼠标控制
    */
   const setupMouseControls = (camera: THREE.PerspectiveCamera, canvas: HTMLCanvasElement) => {
     let isMouseDown = false;
     let mouseX = 0;
     let mouseY = 0;
-    let lon = 0;  // 水平角度
-    let lat = 0;  // 垂直角度
+    // 初始朝向设置为+X轴方向 (0度)，与相机初始朝向一致
+    let lon = 0;   // 水平角度 - 朝向+X轴
+    let lat = 0;   // 垂直角度 - 水平
+
+    // 设置初始相机朝向
+    updateCameraRotation(camera, 0, 0);
 
     const onMouseDown = (event: MouseEvent) => {
       isMouseDown = true;
@@ -281,28 +322,26 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
   };
 
   /**
-   * 更新相机旋转
-   */
-  const updateCameraRotation = (camera: THREE.PerspectiveCamera, lon: number, lat: number) => {
-    const phi = THREE.MathUtils.degToRad(90 - lat);
-    const theta = THREE.MathUtils.degToRad(lon);
-
-    camera.lookAt(
-      Math.sin(phi) * Math.cos(theta),
-      Math.cos(phi),
-      Math.sin(phi) * Math.sin(theta)
-    );
-  };
-
-  /**
    * 开始渲染循环
    */
   const startRenderLoop = () => {
+    console.log(`🔄 Starting render loop`);
+    let frameCount = 0;
+
     const animate = () => {
       animationIdRef.current = requestAnimationFrame(animate);
 
       if (rendererRef.current && sceneRef.current && cameraRef.current) {
         rendererRef.current.render(sceneRef.current, cameraRef.current);
+
+        // 只在前几帧打印调试信息
+        if (frameCount < 5) {
+          frameCount++;
+          console.log(`🎬 Frame ${frameCount} rendered`);
+          if (frameCount === 5) {
+            console.log(`✅ Render loop is working normally`);
+          }
+        }
       }
     };
     animate();

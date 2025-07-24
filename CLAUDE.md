@@ -18,6 +18,8 @@ This project is in early development stage. Currently, the core development file
 5. Please every step of the way just give me a high level explanation of what changes you made
 6. Make every task and code change you do as simple as possible. We want to avoid making any massive or complex changes. Every change should impact as little code as possible. Everything is about simplicity
 7. Always answer in Chinese!
+8. Never try to stop/start server!
+
 
 
 ## Project requirement

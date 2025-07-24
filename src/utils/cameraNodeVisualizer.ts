@@ -90,32 +90,18 @@ export class CameraNodeVisualizer {
    * 创建相机节点
    */
   public createCameraNodes(cameras: CameraData[]): void {
-    // 移除冗余的创建日志
-    // console.log(`Creating ${cameras.length} camera nodes...`);
-
     cameras.forEach((camera, index) => {
-      // 转换为模型坐标系坐标
-      const modelCoordinates = convertThreeJSToModelCoordinates(camera.position);
-
-      // 移除冗余的单个节点创建日志
-      // console.log(`Creating node ${index + 1}/${cameras.length}: ${camera.label} at position (${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)})`);
-      console.log(`📍 ${camera.label} 模型坐标系坐标: (${modelCoordinates.x.toFixed(2)}, ${modelCoordinates.y.toFixed(2)}, ${modelCoordinates.z.toFixed(2)})`);
-
       const nodeGroup = this.createSingleNode(camera);
       this.nodes.set(camera.id, nodeGroup);
       this.sceneManager.cameraNodesGroup.add(nodeGroup);
     });
 
-    // 移除冗余的完成日志
-    // console.log(`Camera nodes created successfully: ${this.nodes.size} nodes added to scene`);
-
-    // 输出所有相机的模型坐标系坐标汇总
-    console.group('📍 所有相机的模型坐标系坐标汇总:');
+    // 统一输出所有相机的坐标信息，格式：label: model(x, y, z), threeJS(x, y, z)
+    console.log('📍 Camera Coordinates:');
     cameras.forEach((camera) => {
       const modelCoordinates = convertThreeJSToModelCoordinates(camera.position);
-      console.log(`${camera.label}: (${modelCoordinates.x.toFixed(3)}, ${modelCoordinates.y.toFixed(3)}, ${modelCoordinates.z.toFixed(3)})`);
+      console.log(`${camera.label}: model(${modelCoordinates.x.toFixed(3)}, ${modelCoordinates.y.toFixed(3)}, ${modelCoordinates.z.toFixed(3)}), threeJS(${camera.position.x.toFixed(3)}, ${camera.position.y.toFixed(3)}, ${camera.position.z.toFixed(3)})`);
     });
-    console.groupEnd();
   }
 
   /**

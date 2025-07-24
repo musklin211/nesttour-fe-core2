@@ -161,12 +161,6 @@ export function convertThreeJSToModelCoordinates(threeJSPosition: THREE.Vector3)
 
   const modelPosition = threeJSPosition.clone().applyMatrix4(THREEJS_TO_MODEL_MATRIX);
 
-  // 移除冗余的坐标转换日志
-  // console.log('🔄 Three.js->Model coordinate conversion:', {
-  //   threeJS: threeJSPosition.toArray().map(v => v.toFixed(3)),
-  //   model: modelPosition.toArray().map(v => v.toFixed(3))
-  // });
-
   return modelPosition;
 }
 
