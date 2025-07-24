@@ -120,13 +120,13 @@ export class PanoramaHotspotManager {
     // 创建球体几何体
     const geometry = new THREE.SphereGeometry(size, 16, 12);
     
-    // 根据距离计算透明度 - 更明显的对比度
-    const maxDistance = 3; // 进一步减小最大距离
-    const minOpacity = 0.15; // 更低的最小透明度
-    const maxOpacity = 0.95; // 更高的最大透明度
-    // 使用指数函数增强对比度
+    // 根据距离计算透明度 - 极其明显的对比度
+    const maxDistance = 2.5; // 进一步减小最大距离，增强变化
+    const minOpacity = 0.08; // 极低的最小透明度（远距离几乎透明）
+    const maxOpacity = 0.98; // 极高的最大透明度（近距离几乎不透明）
+    // 使用更强的指数函数增强对比度
     const normalizedDistance = Math.min(distance / maxDistance, 1);
-    const opacity = maxOpacity - (maxOpacity - minOpacity) * Math.pow(normalizedDistance, 0.7);
+    const opacity = maxOpacity - (maxOpacity - minOpacity) * Math.pow(normalizedDistance, 0.5);
     
     // 创建材质
     const material = new THREE.MeshBasicMaterial({
