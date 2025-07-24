@@ -384,18 +384,100 @@ const view = new Marzipano.RectilinearView({ yaw: 0, pitch: 0, fov: Math.PI/4 },
 
 需要WebGL支持用于3D渲染功能。
 
+## 🔄 坐标系统和转换详解
+
+### 📐 **坐标系统概述**
+
+项目中涉及三个主要坐标系统：
+
+1. **Metashape坐标系**（原始数据）
+   - X轴：向右
+   - Y轴：向前（相机朝向）
+   - Z轴：向上
+   - 右手坐标系
+
+2. **Three.js坐标系**（渲染引擎）
+   - X轴：向右
+   - Y轴：向上
+   - Z轴：向前
+   - 右手坐标系
+
+3. **全景图坐标系**（用户视角）
+   - X轴：向右
+   - Y轴：向上
+   - Z轴：向前（用户朝向）
+
+### 🔧 **关键坐标转换**
+
+#### **1. Metashape → Three.js 转换**
+```javascript
+// 在 coordinateUtils.ts 中实现
+const METASHAPE_TO_THREEJS_MATRIX = new THREE.Matrix4().set(
+  1, 0, 0, 0,    // X轴保持不变 (右)
+  0, 0, 1, 0,    // Metashape的Z轴 -> Three.js的Y轴 (上)
+  0, -1, 0, 0,   // Metashape的Y轴 -> Three.js的-Z轴 (向后)
+  0, 0, 0, 1
+);
+```
+
+#### **2. Bird-view场景旋转**
+```javascript
+// contentGroup绕X轴旋转90°，使模型正确显示
+const SCENE_ROTATION_MATRIX = new THREE.Matrix4().makeRotationX(Math.PI / 2);
+```
+
+#### **3. 全景图中的3D Hotspot坐标转换**
+```javascript
+// 在 panoramaHotspots.ts 中实现
+// 步骤1：计算相对位置
+let relativePosition = new THREE.Vector3()
+  .subVectors(targetCamera.position, currentCamera.position);
+
+// 步骤2：坐标轴重新映射
+let mappedPosition = new THREE.Vector3(
+  -relativePosition.x,  // X翻转（镜像效果）
+  relativePosition.z,   // Z->Y（向上）
+  -relativePosition.y   // Y->-Z（向前）
+);
+
+// 步骤3：绕Y轴旋转-90度
+const rotationMatrix = new THREE.Matrix4().makeRotationY(-Math.PI / 2);
+mappedPosition.applyMatrix4(rotationMatrix);
+```
+
+### ⚠️ **重要注意事项**
+
+1. **Bird-view中的相机节点**：
+   - 使用Three.js坐标系
+   - 在contentGroup中，经过90°旋转
+   - 坐标轴显示：蓝色轴指向相机实际朝向（-Z方向）
+
+2. **全景图中的3D球体**：
+   - 需要特殊的坐标转换
+   - 不能直接使用Three.js坐标
+   - 必须考虑用户视角和相机朝向
+
+3. **调试技巧**：
+   - 使用控制台日志对比转换前后的坐标
+   - 通过标签验证球体位置的正确性
+   - 确保空间关系与Bird-view一致
+
+### 🎯 **验证方法**
+
+正确的坐标转换应该满足：
+- 在1号相机的全景图中，正前方应该是2号相机
+- 左边应该是14号相机
+- 球体分布应该与Bird-view中的空间关系完全一致
+
 ## 🚀 下一步开发重点
 
-根据当前项目状态，**第五阶段：Hotspot功能和场景内导航** 是下一个开发重点：
-
-### 📋 具体任务清单
-1. **Hotspot位置计算**：将其他相机的3D位置投影到当前全景图的2D坐标
-2. **Hotspot视觉设计**：创建可点击的hotspot元素（球体或图标）
-3. **交互功能**：实现hotspot点击切换到对应相机
-4. **动画效果**：添加hotspot的hover和点击动画
-5. **距离优化**：根据距离显示/隐藏hotspot，避免过于密集
-
-这将使虚拟漫游体验更加完整，用户可以在全景图内直接导航到其他位置。
+**第五阶段：Hotspot功能优化和完善**：
+- ✅ 3D球体位置计算和显示
+- ✅ Billboard文字标签
+- ✅ 正确的坐标系转换
+- [ ] 距离透明度优化
+- [ ] 交互动画效果
+- [ ] 性能优化
 
 ---
 *最后更新: 2025-07-24*
