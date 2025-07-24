@@ -78,26 +78,37 @@ export async function parseCamerasXML(): Promise<CameraData[]> {
     console.log(`Found ${cameraElements.length} camera elements in XML`);
 
     cameraElements.forEach((cameraElement, index) => {
-      const id = parseInt(cameraElement.getAttribute('id') || '0');
+      const xmlId = parseInt(cameraElement.getAttribute('id') || '0');
       const label = cameraElement.getAttribute('label') || '';
 
-      console.log(`Processing camera ${index}: id=${id}, label=${label}`);
+      // 从label中解析真实的camera_id
+      // 格式: <group_number>_frame_<camera_id>
+      const match = label.match(/(\d+)_frame_(\d+)/);
+      if (!match) {
+        console.warn(`Invalid label format: ${label}, expected format: <group>_frame_<id>`);
+        return;
+      }
+
+      const groupNumber = parseInt(match[1]);
+      const cameraId = parseInt(match[2]);
+
+      console.log(`Processing camera ${index}: xmlId=${xmlId}, label=${label}, parsed cameraId=${cameraId}`);
 
       const transformElement = cameraElement.querySelector('transform');
       if (!transformElement || !transformElement.textContent) {
-        console.warn(`No transform data found for camera ${id}`);
+        console.warn(`No transform data found for camera ${cameraId} (${label})`);
         return;
       }
 
       const transformString = transformElement.textContent.trim();
-      console.log(`Transform string for camera ${id}:`, transformString.substring(0, 50) + '...');
+      console.log(`Transform string for camera ${cameraId}:`, transformString.substring(0, 50) + '...');
 
       try {
         const { position, rotation, matrix } = parseTransformMatrix(transformString);
 
         // 验证变换矩阵
         if (!validateTransformMatrix(matrix)) {
-          console.warn(`Invalid transform matrix for camera ${id}, skipping`);
+          console.warn(`Invalid transform matrix for camera ${cameraId}, skipping`);
           return;
         }
 
@@ -114,7 +125,7 @@ export async function parseCamerasXML(): Promise<CameraData[]> {
         const imageUrl = `/data/frames/${label}.JPG`;
 
         cameras.push({
-          id,
+          id: cameraId, // 使用从label解析出的真实camera_id
           label,
           position: converted.position,
           rotation: converted.rotation,
@@ -122,16 +133,17 @@ export async function parseCamerasXML(): Promise<CameraData[]> {
           imageUrl,
         });
 
-        console.log(`Camera ${id} (${label}):`);
-        console.log(`  Original Metashape: (${originalPos.x.toFixed(3)}, ${originalPos.y.toFixed(3)}, ${originalPos.z.toFixed(3)})`);
-        console.log(`  Converted Three.js: (${converted.position.x.toFixed(3)}, ${converted.position.y.toFixed(3)}, ${converted.position.z.toFixed(3)})`);
+        console.log(`✅ Camera ${cameraId} (${label}) mapped correctly:`);
+        console.log(`  XML ID: ${xmlId} → Real Camera ID: ${cameraId}`);
+        console.log(`  Image: ${imageUrl}`);
+        console.log(`  🎯 FINAL POSITION AFTER SCENE ROTATION: (${converted.position.x.toFixed(3)}, ${converted.position.y.toFixed(3)}, ${converted.position.z.toFixed(3)})`);
 
         // 调试模式下打印详细信息
         if (process.env.NODE_ENV === 'development' && cameras.length < 3) {
-          debugTransformMatrix(matrix, `Camera ${id} (${label})`);
+          debugTransformMatrix(matrix, `Camera ${cameraId} (${label})`);
         }
       } catch (error) {
-        console.error(`Error parsing camera ${id}:`, error);
+        console.error(`Error parsing camera ${cameraId}:`, error);
       }
     });
 

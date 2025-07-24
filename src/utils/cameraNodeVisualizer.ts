@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { SceneManager } from './sceneManager';
 import { CameraData } from '@/types';
+import { convertThreeJSToModelCoordinates } from './coordinateUtils';
 
 /**
  * 相机节点可视化器
@@ -92,7 +93,11 @@ export class CameraNodeVisualizer {
     console.log(`Creating ${cameras.length} camera nodes...`);
 
     cameras.forEach((camera, index) => {
+      // 转换为模型坐标系坐标
+      const modelCoordinates = convertThreeJSToModelCoordinates(camera.position);
+
       console.log(`Creating node ${index + 1}/${cameras.length}: ${camera.label} at position (${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)})`);
+      console.log(`📍 ${camera.label} 模型坐标系坐标: (${modelCoordinates.x.toFixed(2)}, ${modelCoordinates.y.toFixed(2)}, ${modelCoordinates.z.toFixed(2)})`);
 
       const nodeGroup = this.createSingleNode(camera);
       this.nodes.set(camera.id, nodeGroup);
@@ -100,10 +105,14 @@ export class CameraNodeVisualizer {
     });
 
     console.log(`Camera nodes created successfully: ${this.nodes.size} nodes added to scene`);
-    console.log('Node positions:', Array.from(this.nodes.values()).map(node => ({
-      position: node.position.toArray(),
-      userData: node.userData
-    })));
+
+    // 输出所有相机的模型坐标系坐标汇总
+    console.group('📍 所有相机的模型坐标系坐标汇总:');
+    cameras.forEach((camera) => {
+      const modelCoordinates = convertThreeJSToModelCoordinates(camera.position);
+      console.log(`${camera.label}: (${modelCoordinates.x.toFixed(3)}, ${modelCoordinates.y.toFixed(3)}, ${modelCoordinates.z.toFixed(3)})`);
+    });
+    console.groupEnd();
   }
 
   /**

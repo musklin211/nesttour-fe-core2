@@ -20,6 +20,13 @@ const METASHAPE_TO_THREEJS_MATRIX = new THREE.Matrix4().set(
 );
 
 /**
+ * 场景旋转矩阵：绕X轴旋转90度
+ * 这是为了让模型正确显示（天花板在上，地面在下）
+ * 相机节点也需要应用同样的旋转以保持坐标一致性
+ */
+const SCENE_ROTATION_MATRIX = new THREE.Matrix4().makeRotationX(Math.PI / 2);
+
+/**
  * 将Metashape的4x4变换矩阵转换为Three.js坐标系
  */
 export function convertMetashapeToThreeJS(metashapeMatrix: THREE.Matrix4): {
@@ -33,7 +40,8 @@ export function convertMetashapeToThreeJS(metashapeMatrix: THREE.Matrix4): {
   const originalScale = new THREE.Vector3();
   metashapeMatrix.decompose(originalPos, originalRot, originalScale);
 
-  // 应用坐标系转换
+  // 应用坐标系转换：只做Metashape->Three.js转换
+  // 不需要额外的场景旋转，因为相机节点在contentGroup中会自动跟着旋转
   const convertedMatrix = new THREE.Matrix4()
     .multiplyMatrices(METASHAPE_TO_THREEJS_MATRIX, metashapeMatrix);
 
@@ -43,6 +51,12 @@ export function convertMetashapeToThreeJS(metashapeMatrix: THREE.Matrix4): {
   const scale = new THREE.Vector3();
 
   convertedMatrix.decompose(position, rotation, scale);
+
+  // 调试信息：显示坐标转换过程
+  console.log('🔄 Metashape->Three.js conversion:', {
+    original: originalPos.toArray().map(v => v.toFixed(3)),
+    converted: position.toArray().map(v => v.toFixed(3))
+  });
 
   // 简化调试信息
   if (originalPos.length() > 0.01 && position.length() < 0.01) {
@@ -132,17 +146,41 @@ export function calculateRelativePosition(
 }
 
 /**
+ * 将Three.js坐标转换为模型坐标系坐标
+ * 模型坐标系是通过contentGroup绕X轴旋转90°后的坐标系
+ * 要得到模型坐标系下的坐标，需要应用绕X轴旋转-90°的变换
+ */
+export function convertThreeJSToModelCoordinates(threeJSPosition: THREE.Vector3): THREE.Vector3 {
+  // 绕X轴旋转-90°的变换矩阵
+  const THREEJS_TO_MODEL_MATRIX = new THREE.Matrix4().set(
+    1,  0,  0, 0,    // X轴保持不变
+    0,  0,  1, 0,    // Three.js的Z轴 -> 模型的Y轴
+    0, -1,  0, 0,    // Three.js的Y轴 -> 模型的-Z轴
+    0,  0,  0, 1
+  );
+
+  const modelPosition = threeJSPosition.clone().applyMatrix4(THREEJS_TO_MODEL_MATRIX);
+
+  console.log('🔄 Three.js->Model coordinate conversion:', {
+    threeJS: threeJSPosition.toArray().map(v => v.toFixed(3)),
+    model: modelPosition.toArray().map(v => v.toFixed(3))
+  });
+
+  return modelPosition;
+}
+
+/**
  * 调试工具：打印变换矩阵信息
  */
 export function debugTransformMatrix(matrix: THREE.Matrix4, label: string = ''): void {
   const position = new THREE.Vector3();
   const rotation = new THREE.Quaternion();
   const scale = new THREE.Vector3();
-  
+
   matrix.decompose(position, rotation, scale);
-  
+
   const euler = new THREE.Euler().setFromQuaternion(rotation);
-  
+
   console.group(`Transform Matrix Debug ${label}`);
   console.log('Position:', position.toArray().map(v => v.toFixed(3)));
   console.log('Rotation (Euler):', [
