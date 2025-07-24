@@ -51,16 +51,16 @@ export class PanoramaHotspotManager {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d')!;
 
-    // 设置canvas大小
-    canvas.width = 128;
-    canvas.height = 64;
+    // 设置canvas大小 - 缩小宽度
+    canvas.width = 80;
+    canvas.height = 40;
 
     // 绘制文字
     context.fillStyle = 'rgba(0, 0, 0, 0.8)';
     context.fillRect(0, 0, canvas.width, canvas.height);
 
     context.fillStyle = 'white';
-    context.font = 'bold 24px Arial';
+    context.font = 'bold 16px Arial'; // 缩小字体
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     context.fillText(text, canvas.width / 2, canvas.height / 2);
@@ -120,11 +120,13 @@ export class PanoramaHotspotManager {
     // 创建球体几何体
     const geometry = new THREE.SphereGeometry(size, 16, 12);
     
-    // 根据距离计算透明度 - 增强对比度
-    const maxDistance = 5; // 减小最大距离，增强透明度变化
-    const minOpacity = 0.2; // 最小透明度
-    const maxOpacity = 0.9; // 最大透明度
-    const opacity = Math.max(minOpacity, Math.min(maxOpacity, maxOpacity - (distance / maxDistance) * (maxOpacity - minOpacity)));
+    // 根据距离计算透明度 - 更明显的对比度
+    const maxDistance = 3; // 进一步减小最大距离
+    const minOpacity = 0.15; // 更低的最小透明度
+    const maxOpacity = 0.95; // 更高的最大透明度
+    // 使用指数函数增强对比度
+    const normalizedDistance = Math.min(distance / maxDistance, 1);
+    const opacity = maxOpacity - (maxOpacity - minOpacity) * Math.pow(normalizedDistance, 0.7);
     
     // 创建材质
     const material = new THREE.MeshBasicMaterial({
@@ -148,9 +150,12 @@ export class PanoramaHotspotManager {
     const textSprite = new THREE.Sprite(textMaterial);
 
     // 文字位置：在球体上方
-    textSprite.position.set(0, size * 2.5, 0);
-    // 设置标签大小
-    textSprite.scale.set(size * 4, size * 2, 1);
+    textSprite.position.set(0, size * 2.0, 0);
+    // 设置标签大小 - 进一步缩小标签宽度
+    textSprite.scale.set(size * 1.8, size * 0.9, 1);
+
+    // 禁用标签的射线检测，避免hover时影响球体
+    textSprite.raycast = () => {};
 
     console.log(`🔵 Creating sphere and label for camera ${targetCamera.id}, size: ${size}, opacity: ${opacity}`);
 

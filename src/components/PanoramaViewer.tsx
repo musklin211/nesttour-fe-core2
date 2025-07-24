@@ -310,10 +310,18 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     // 设置初始相机朝向（与固定朝向一致）
     updateCameraRotation(camera, 0, 0);
 
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    const DRAG_THRESHOLD = 5; // 像素阈值，超过此值认为是拖拽
+
     const onMouseDown = (event: MouseEvent) => {
       isMouseDown = true;
+      isDragging = false;
       mouseX = event.clientX;
       mouseY = event.clientY;
+      dragStartX = event.clientX;
+      dragStartY = event.clientY;
       canvas.style.cursor = 'grabbing';
     };
 
@@ -325,14 +333,24 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     };
 
     const onClick = (event: MouseEvent) => {
-      // 处理3D hotspot点击
-      if (hotspotManagerRef.current) {
+      // 只有在没有拖拽的情况下才处理点击
+      if (!isDragging && hotspotManagerRef.current) {
         hotspotManagerRef.current.handleClick(event, camera, canvas);
       }
     };
 
     const onMouseMove = (event: MouseEvent) => {
       if (isMouseDown) {
+        // 检查是否超过拖拽阈值
+        const dragDistance = Math.sqrt(
+          Math.pow(event.clientX - dragStartX, 2) +
+          Math.pow(event.clientY - dragStartY, 2)
+        );
+
+        if (dragDistance > DRAG_THRESHOLD) {
+          isDragging = true;
+        }
+
         // 拖拽逻辑
         const deltaX = event.clientX - mouseX;
         const deltaY = event.clientY - mouseY;
