@@ -76,11 +76,15 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
 
     // 开始旋转动画
     animateToViewAngle(targetViewAngle, () => {
-      // 动画完成后切换相机
-      console.log(`✅ Rotation animation completed, switching to camera ${targetCameraId}`);
-      if (onCameraSwitch) {
-        onCameraSwitch(targetCameraId, targetViewAngle);
-      }
+      // 旋转完成后开始zoom in动画
+      console.log(`✅ Rotation animation completed, starting zoom in animation`);
+      animateZoomIn(() => {
+        // zoom in完成后切换相机
+        console.log(`✅ Zoom in animation completed, switching to camera ${targetCameraId}`);
+        if (onCameraSwitch) {
+          onCameraSwitch(targetCameraId, targetViewAngle);
+        }
+      });
     });
   }, [onCameraSwitch]);
 
@@ -364,6 +368,49 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
         requestAnimationFrame(animate);
       } else {
         console.log(`✅ Rotation animation completed`);
+        if (onComplete) {
+          onComplete();
+        }
+      }
+    };
+
+    animate();
+  };
+
+  /**
+   * 动画zoom in效果
+   */
+  const animateZoomIn = (onComplete?: () => void) => {
+    if (!cameraRef.current) return;
+
+    const camera = cameraRef.current;
+    const startFov = camera.fov;
+    const targetFov = Math.max(20, startFov * 0.4); // zoom in到40%，但不小于20度
+    const duration = 2000; // 2秒动画
+    const startTime = Date.now();
+
+    console.log(`🔍 Starting zoom in animation from FOV ${startFov.toFixed(1)}° to ${targetFov.toFixed(1)}°`);
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // 使用easeInOutQuad缓动函数，让zoom更平缓
+      const easeProgress = progress < 0.5
+        ? 2 * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+      // 计算当前FOV
+      const currentFov = startFov + (targetFov - startFov) * easeProgress;
+
+      // 更新相机FOV
+      camera.fov = currentFov;
+      camera.updateProjectionMatrix();
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        console.log(`✅ Zoom in animation completed, final FOV: ${currentFov.toFixed(1)}°`);
         if (onComplete) {
           onComplete();
         }
