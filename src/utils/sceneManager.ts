@@ -313,14 +313,32 @@ export class SceneManager {
       this.handleResize();
     });
     this.resizeObserver.observe(this.container);
-    
+
     // 鼠标事件（用于射线检测）
     this.renderer.domElement.addEventListener('mousemove', (event) => {
       this.updateMousePosition(event);
     });
-    
-    this.renderer.domElement.addEventListener('click', (event) => {
-      this.handleClick(event);
+
+    // 使用mousedown和mouseup来检测真正的点击
+    let mouseDownTime = 0;
+    let mouseDownPosition = { x: 0, y: 0 };
+
+    this.renderer.domElement.addEventListener('mousedown', (event) => {
+      mouseDownTime = Date.now();
+      mouseDownPosition = { x: event.clientX, y: event.clientY };
+    });
+
+    this.renderer.domElement.addEventListener('mouseup', (event) => {
+      const clickDuration = Date.now() - mouseDownTime;
+      const distance = Math.sqrt(
+        Math.pow(event.clientX - mouseDownPosition.x, 2) +
+        Math.pow(event.clientY - mouseDownPosition.y, 2)
+      );
+
+      // 只有在快速点击且鼠标移动距离很小时才认为是点击
+      if (clickDuration < 200 && distance < 5) {
+        this.handleClick(event);
+      }
     });
   }
 
@@ -352,22 +370,53 @@ export class SceneManager {
    * 处理点击事件
    */
   private handleClick(event: MouseEvent): void {
+    console.log('Click event triggered');
     this.updateMousePosition(event);
-    
+
     // 射线检测
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const intersects = this.raycaster.intersectObjects(this.cameraNodesGroup.children, true);
-    
+
+    console.log(`Raycaster found ${intersects.length} intersections`);
+    console.log('Camera nodes group children count:', this.cameraNodesGroup.children.length);
+
     if (intersects.length > 0) {
       const clickedObject = intersects[0].object;
-      this.onNodeClick(clickedObject);
+      console.log('Clicked object:', clickedObject);
+      console.log('Clicked object userData:', clickedObject.userData);
+
+      // 查找包含相机数据的父节点
+      const cameraNode = this.findCameraNode(clickedObject);
+      if (cameraNode) {
+        console.log('Camera node found:', cameraNode.userData);
+        this.onNodeClick(cameraNode);
+      } else {
+        console.log('No camera node found, using clicked object');
+        this.onNodeClick(clickedObject);
+      }
+    } else {
+      console.log('No intersections found');
     }
   }
 
   /**
-   * 节点点击回调（子类可重写）
+   * 查找相机节点
    */
-  protected onNodeClick(object: THREE.Object3D): void {
+  private findCameraNode(object: THREE.Object3D): THREE.Object3D | null {
+    let current = object;
+    while (current) {
+      if (current.userData && current.userData.type === 'cameraNode') {
+        return current;
+      }
+      current = current.parent!;
+    }
+    return null;
+  }
+
+  /**
+   * 节点点击回调（可以被外部重写）
+   */
+  public onNodeClick(object: THREE.Object3D): void {
     console.log('Node clicked:', object.userData);
   }
 

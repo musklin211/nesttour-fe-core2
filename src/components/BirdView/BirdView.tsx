@@ -61,11 +61,14 @@ const BirdView: React.FC<BirdViewProps> = ({ tourData, onCameraSelect }) => {
       });
 
       // 重写节点点击回调
-      sceneManager['onNodeClick'] = (object: any) => {
+      sceneManager.onNodeClick = (object: any) => {
+        console.log('Node click event received:', object.userData);
         const cameraId = object.userData?.cameraId;
         if (typeof cameraId === 'number') {
-          console.log('Camera node clicked:', cameraId);
+          console.log('Camera node clicked, switching to camera:', cameraId);
           onCameraSelect(cameraId);
+        } else {
+          console.log('Clicked object does not have cameraId:', object.userData);
         }
       };
 
@@ -103,6 +106,12 @@ const BirdView: React.FC<BirdViewProps> = ({ tourData, onCameraSelect }) => {
           nodeVisualizerRef.current.toggleDirectionIndicators(false);
           console.log('Direction indicators disabled');
         }
+      };
+
+      // 测试点击功能
+      (window as any).testCameraClick = (cameraId: number = 3) => {
+        console.log(`Testing camera click for camera ${cameraId}`);
+        onCameraSelect(cameraId);
       };
 
       // 创建调试面板
