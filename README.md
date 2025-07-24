@@ -48,47 +48,52 @@
 - [ ] 测试和调试全景图加载
 - [ ] 添加hotspot功能
 
-### ⏭️ 待实现阶段
+### ⏭️ **下一步开发计划**
 
-**第五阶段：视图切换和导航系统**
-- [ ] 实现Bird-view和Panoramic-view间的切换
-- [ ] 添加ESC键返回功能
-- [ ] 创建导航UI组件
+**第五阶段：Hotspot功能和场景内导航** 🎯
+- [ ] 在全景图中显示其他相机位置的hotspot
+- [ ] 实现全景图内的相机切换功能
+- [ ] 添加hotspot的视觉效果和交互动画
+- [ ] 优化hotspot的3D位置计算
 
 **第六阶段：场景过渡动画**
-- [ ] 实现zoom in/out动画
+- [ ] 实现全景图切换的zoom in/out动画
 - [ ] 添加fade过渡效果
-- [ ] 优化动画性能
+- [ ] 优化动画性能和流畅度
 
-**第七阶段：用户交互和控制**
-- [ ] 创建控制面板UI
-- [ ] 添加键盘快捷键
+**第七阶段：用户界面和控制**
+- [ ] 创建导航控制面板UI
+- [ ] 添加更多键盘快捷键
 - [ ] 实现触摸设备支持
+- [ ] 添加全屏模式
 
-**第八阶段：测试和优化**
+**第八阶段：高级功能**
+- [ ] 添加小地图导航
+- [ ] 实现测量工具
+- [ ] 添加标注和信息点
 - [ ] 性能分析和优化
-- [ ] 兼容性测试
-- [ ] 用户体验测试
 
-## 技术栈
+## 🛠️ 技术栈
 
 - **前端框架**: React 18 + TypeScript
 - **构建工具**: Vite
-- **3D渲染**: Three.js
-- **全景查看**: Marzipano (计划集成)
+- **3D渲染**: Three.js (场景管理、模型加载、全景显示)
+- **状态管理**: React Hooks + Context
 - **样式**: CSS Modules
+- **数据格式**: XML (Metashape), GLB (3D模型), JPG (全景图)
 
-## 数据文件结构
+## 📁 数据文件结构
 
 ```
-public/data/
-├── cameras.xml          # 相机位置和变换矩阵数据
-├── model.glb           # 3D场景模型
-├── texture.jpg         # 模型纹理
-└── panoramas/          # 全景图片目录
-    ├── 1_frame_3.jpg
-    ├── 1_frame_6.jpg
-    └── ...
+public/data/sample-space/
+├── cameras.xml          # 相机位置和变换矩阵数据 (Metashape SfM生成)
+├── model.glb           # 3D场景模型文件
+├── texture.jpg         # 模型纹理贴图
+└── frames/             # 全景图片目录 (15张equirectangular图像)
+    ├── 1_frame_1.JPG   # 5760x2880分辨率
+    ├── 1_frame_2.JPG
+    ├── ...
+    └── 1_frame_15.JPG
 ```
 
 ## 项目结构
@@ -226,29 +231,31 @@ scene
 - 补充光源: 3个方向光，强度0.5-0.7
 - 阴影设置: PCFSoftShadowMap, 2048x2048
 
-## 当前项目状态 (v0.3.0)
+## 🎉 当前项目状态 (v0.4.0)
 
-### ✅ 已创建的核心文件
+### ✅ **核心功能已完成**
+- **完整的虚拟漫游体验**：Bird-view ↔ Panoramic-view 无缝切换
+- **稳定的全景图显示**：解决了重复初始化和黑屏问题
+- **正确的坐标轴显示**：蓝色轴准确指向相机朝向
+- **可靠的点击检测**：每次点击都能稳定打开全景图
+
+### 🔧 **已创建的核心文件**
 - `src/utils/sceneManager.ts` - 3D场景管理器
-- `src/utils/xmlParser.ts` - XML数据解析器
+- `src/utils/dataParser.ts` - XML数据解析器（重构版）
 - `src/utils/modelLoader.ts` - GLB模型加载器
-- `src/utils/cameraVisualizer.ts` - 相机节点可视化
+- `src/utils/cameraNodeVisualizer.ts` - 相机节点可视化（重构版）
 - `src/utils/coordinateAxesHelper.ts` - 坐标轴辅助工具
-- `src/types/camera.ts` - 相机数据类型定义
-- `src/components/BirdView.tsx` - 3D场景组件
+- `src/types/index.ts` - 完整的类型定义
+- `src/components/BirdView/BirdView.tsx` - 3D场景组件
+- `src/components/PanoramaViewer.tsx` - 全景查看器组件
+- `src/hooks/useVirtualTour.ts` - 虚拟漫游状态管理
 
-### 🔧 当前配置状态
-- **相机节点**: 15个相机位置已正确解析和显示
-- **坐标系**: Metashape → Three.js转换已验证
-- **光照**: 环境光1.5 + 主方向光1.8 + 3个补充光源
-- **交互**: OrbitControls + Raycaster点击检测
-- **性能**: 60fps稳定，内存使用正常
-
-### ⚠️ 已知问题和注意事项
-- 相机朝向箭头指向-Z方向（Three.js相机默认朝向）
-- 坐标轴显示：X红Y绿Z蓝，Z轴指向相机前方
-- 光照强度已调整到合适亮度，避免过曝
-- 模型加载依赖texture.jpg纹理文件
+### 🎯 **当前技术状态**
+- **相机节点**: 15个相机位置正确解析和显示，坐标轴指向修正
+- **坐标系**: Metashape → Three.js转换完全验证
+- **全景图**: 基于Three.js的稳定全景显示，支持鼠标交互
+- **视图切换**: 完整的状态管理和组件生命周期
+- **性能**: 60fps稳定，内存使用优化
 
 ## 第四阶段详细执行计划
 
@@ -377,6 +384,19 @@ const view = new Marzipano.RectilinearView({ yaw: 0, pitch: 0, fov: Math.PI/4 },
 
 需要WebGL支持用于3D渲染功能。
 
+## 🚀 下一步开发重点
+
+根据当前项目状态，**第五阶段：Hotspot功能和场景内导航** 是下一个开发重点：
+
+### 📋 具体任务清单
+1. **Hotspot位置计算**：将其他相机的3D位置投影到当前全景图的2D坐标
+2. **Hotspot视觉设计**：创建可点击的hotspot元素（球体或图标）
+3. **交互功能**：实现hotspot点击切换到对应相机
+4. **动画效果**：添加hotspot的hover和点击动画
+5. **距离优化**：根据距离显示/隐藏hotspot，避免过于密集
+
+这将使虚拟漫游体验更加完整，用户可以在全景图内直接导航到其他位置。
+
 ---
 *最后更新: 2025-07-24*
-*当前版本: v0.3.0*
+*当前版本: v0.4.0*
