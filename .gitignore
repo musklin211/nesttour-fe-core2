@@ -23,8 +23,12 @@ dist-ssr
 *.sln
 *.sw?
 
-# Runtime data directory (copied from data/sample-space/)
-public/data/
+# Data directories (large files, not for version control)
+data/
+public/
+
+# Reference repositories (external git repos, documentation only)
+ref/
 
 # Environment variables
 .env
@@ -40,7 +44,3 @@ coverage/
 # OS generated files
 Thumbs.db
 .DS_Store
-
-# Reference repositories (external git repos)
-ref/marzipano/
-ref/panolens.js/
