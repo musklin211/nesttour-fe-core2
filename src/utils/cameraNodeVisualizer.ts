@@ -150,9 +150,10 @@ export class CameraNodeVisualizer {
     // 设置位置
     nodeGroup.position.copy(camera.position);
 
-    // 创建标签
+    // 创建标签 - 只显示相机编号
     if (this.options.showLabels) {
-      const label = this.createLabel(camera.label);
+      const cameraNumber = camera.label.replace('1_frame_', ''); // 提取编号
+      const label = this.createLabel(cameraNumber);
       nodeGroup.add(label);
     }
 
@@ -167,12 +168,12 @@ export class CameraNodeVisualizer {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d')!;
     
-    // 设置canvas大小
-    canvas.width = 256;
-    canvas.height = 64;
+    // 设置canvas大小 - 与全景图中一致
+    canvas.width = 80;
+    canvas.height = 40;
     
-    // 设置字体样式
-    context.font = '24px Arial';
+    // 设置字体样式 - 与全景图中一致
+    context.font = 'bold 16px Arial';
     context.fillStyle = this.options.labelColor;
     context.textAlign = 'center';
     context.textBaseline = 'middle';
@@ -189,10 +190,10 @@ export class CameraNodeVisualizer {
     const texture = new THREE.CanvasTexture(canvas);
     const material = new THREE.SpriteMaterial({ map: texture });
     
-    // 创建精灵
+    // 创建精灵 - 正确的位置和大小
     const sprite = new THREE.Sprite(material);
-    sprite.scale.set(this.options.labelSize * 2, this.options.labelSize * 0.5, 1);
-    sprite.position.set(0, this.options.nodeSize * 2, 0);
+    sprite.scale.set(this.options.labelSize * 0.8, this.options.labelSize * 0.4, 1); // 合适的标签大小
+    sprite.position.set(0, 0, -this.options.nodeSize * 2.5); // 放在球体顶上（-Z轴方向，朝向天花板）
     
     return sprite;
   }
