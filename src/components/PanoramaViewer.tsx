@@ -9,7 +9,8 @@ interface PanoramaViewerProps {
   tourData?: VirtualTourData;
   onEscape?: () => void;
   onError?: (error: string) => void;
-  onCameraSwitch?: (cameraId: number) => void;
+  onCameraSwitch?: (cameraId: number, currentViewAngle?: { lon: number; lat: number }) => void;
+  initialViewAngle?: { lon: number; lat: number }; // 新增：初始视角
 }
 
 interface PanoramaViewerState {
@@ -23,7 +24,8 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
   tourData,
   onEscape,
   onError,
-  onCameraSwitch
+  onCameraSwitch,
+  initialViewAngle
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -41,11 +43,29 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
   const initOnceRef = useRef<number | null>(null);
   const hotspotManagerRef = useRef<PanoramaHotspotManager | null>(null);
 
+  // 视角状态 - 使用ref存储实时值，state用于传递给父组件
+  const viewAngleRef = useRef({
+    lon: initialViewAngle?.lon ?? 0,
+    lat: initialViewAngle?.lat ?? 0
+  });
+  const [viewAngle, setViewAngle] = useState(viewAngleRef.current);
+
+  // 当相机切换或初始视角改变时，更新视角状态
+  useEffect(() => {
+    const newAngle = {
+      lon: initialViewAngle?.lon ?? 0,
+      lat: initialViewAngle?.lat ?? 0
+    };
+    viewAngleRef.current = newAngle;
+    setViewAngle(newAngle);
+  }, [cameraId, initialViewAngle]);
+
   // 处理hotspot点击
   const handleHotspotClick = useCallback((targetCameraId: number) => {
-    console.log(`🎯 3D Hotspot clicked: switching to camera ${targetCameraId}`);
+    const currentAngle = viewAngleRef.current;
+    console.log(`🎯 3D Hotspot clicked: switching to camera ${targetCameraId} with view angle lon=${currentAngle.lon}°, lat=${currentAngle.lat}°`);
     if (onCameraSwitch) {
-      onCameraSwitch(targetCameraId);
+      onCameraSwitch(targetCameraId, currentAngle);
     }
   }, [onCameraSwitch]);
 
@@ -301,14 +321,10 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     let mouseX = 0;
     let mouseY = 0;
 
-    // 简单的初始朝向设置
-    let lon = 0;   // 水平角度
-    let lat = 0;   // 垂直角度
+    console.log(`🧭 Mouse control initialized with lon=${viewAngleRef.current.lon}°, lat=${viewAngleRef.current.lat}°`);
 
-    console.log(`🧭 Mouse control initialized with lon=${lon}°, lat=${lat}°`);
-
-    // 设置初始相机朝向（与固定朝向一致）
-    updateCameraRotation(camera, 0, 0);
+    // 设置初始相机朝向（使用传入的初始视角）
+    updateCameraRotation(camera, viewAngleRef.current.lon, viewAngleRef.current.lat);
 
     let isDragging = false;
     let dragStartX = 0;
@@ -359,14 +375,17 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
         mouseY = event.clientY;
 
         // 调整灵敏度
-        lon -= deltaX * 0.2;
-        lat += deltaY * 0.2;
+        const newLon = viewAngleRef.current.lon - deltaX * 0.2;
+        const newLat = Math.max(-85, Math.min(85, viewAngleRef.current.lat + deltaY * 0.2));
 
-        // 限制垂直角度范围
-        lat = Math.max(-85, Math.min(85, lat));
+        // 更新ref中的实时值
+        viewAngleRef.current = { lon: newLon, lat: newLat };
+
+        // 更新state（用于传递给父组件）
+        setViewAngle({ lon: newLon, lat: newLat });
 
         // 更新相机朝向
-        updateCameraRotation(camera, lon, lat);
+        updateCameraRotation(camera, newLon, newLat);
       } else {
         // hover效果
         if (hotspotManagerRef.current) {

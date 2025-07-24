@@ -19,6 +19,22 @@ const App: React.FC = () => {
     loadTourData
   } = useVirtualTour();
 
+  // 视角状态，用于在相机切换时保持视角连续性
+  const [currentViewAngle, setCurrentViewAngle] = useState<{ lon: number; lat: number } | undefined>(undefined);
+
+  // 处理相机切换，保持视角连续性
+  const handleCameraSwitch = (cameraId: number, viewAngle?: { lon: number; lat: number }) => {
+    console.log(`🔄 Camera switch: ${currentCameraId} → ${cameraId}, view angle:`, viewAngle);
+
+    // 保存当前视角
+    if (viewAngle) {
+      setCurrentViewAngle(viewAngle);
+    }
+
+    // 切换相机
+    switchToPanoView(cameraId);
+  };
+
   useEffect(() => {
     // 应用启动时加载数据
     loadTourData();
@@ -53,7 +69,11 @@ const App: React.FC = () => {
       {viewMode === 'bird-view' ? (
         <BirdView
           tourData={tourData}
-          onCameraSelect={switchToPanoView}
+          onCameraSelect={(cameraId) => {
+            // 从Bird-view切换时清除视角状态，使用默认朝向
+            setCurrentViewAngle(undefined);
+            switchToPanoView(cameraId);
+          }}
         />
       ) : (
         <PanoramaViewer
@@ -61,7 +81,8 @@ const App: React.FC = () => {
           tourData={tourData}
           onEscape={switchToBirdView}
           onError={(error) => console.error('Panorama error:', error)}
-          onCameraSwitch={switchToPanoView}
+          onCameraSwitch={handleCameraSwitch}
+          initialViewAngle={currentViewAngle}
         />
       )}
     </div>
