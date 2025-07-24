@@ -9,8 +9,9 @@ interface PanoramaViewerProps {
   tourData?: VirtualTourData;
   onEscape?: () => void;
   onError?: (error: string) => void;
-  onCameraSwitch?: (cameraId: number, currentViewAngle?: { lon: number; lat: number }) => void;
-  initialViewAngle?: { lon: number; lat: number }; // 新增：初始视角
+  onCameraSwitch?: (cameraId: number, currentViewAngle?: { lon: number; lat: number }, zoomFov?: number) => void;
+  initialViewAngle?: { lon: number; lat: number }; // 初始视角
+  initialZoomFov?: number; // 新增：初始zoom FOV
 }
 
 interface PanoramaViewerState {
@@ -25,7 +26,8 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
   onEscape,
   onError,
   onCameraSwitch,
-  initialViewAngle
+  initialViewAngle,
+  initialZoomFov
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -61,7 +63,7 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
   }, [cameraId, initialViewAngle]);
 
   // 处理hotspot点击
-  const handleHotspotClick = useCallback((targetCameraId: number, targetViewAngle?: { lon: number; lat: number }) => {
+  const handleHotspotClick = useCallback((targetCameraId: number, targetViewAngle?: { lon: number; lat: number }, distance?: number) => {
     if (!targetViewAngle) {
       // 如果没有目标视角，使用当前视角
       const currentAngle = viewAngleRef.current;
@@ -72,17 +74,24 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       return;
     }
 
-    console.log(`🎯 3D Hotspot clicked: rotating to target view angle lon=${targetViewAngle.lon.toFixed(1)}°, lat=${targetViewAngle.lat.toFixed(1)}°`);
+    console.log(`🎯 3D Hotspot clicked: rotating to target view angle lon=${targetViewAngle.lon.toFixed(1)}°, lat=${targetViewAngle.lat.toFixed(1)}°, distance=${distance?.toFixed(2)}`);
+
+    // 根据距离计算zoom程度
+    const zoomFov = calculateZoomFov(distance || 3.0);
 
     // 开始旋转动画
     animateToViewAngle(targetViewAngle, () => {
       // 旋转完成后开始zoom in动画
-      console.log(`✅ Rotation animation completed, starting zoom in animation`);
-      animateZoomIn(() => {
-        // zoom in完成后切换相机
-        console.log(`✅ Zoom in animation completed, switching to camera ${targetCameraId}`);
+      console.log(`✅ Rotation animation completed, starting zoom in to FOV ${zoomFov.toFixed(1)}°`);
+      animateZoomIn(zoomFov, () => {
+        // zoom in完成后切换相机，传递对称的zoom out FOV
+        const normalFov = 75;
+        const zoomAmount = normalFov - zoomFov; // 计算zoom in的量
+        const symmetricZoomOutFov = normalFov + zoomAmount; // B的起始FOV应该是对称的zoom out状态
+
+        console.log(`✅ Zoom in animation completed, A zoomed in by ${zoomAmount.toFixed(1)}°, B will start with zoom out FOV ${symmetricZoomOutFov.toFixed(1)}°`);
         if (onCameraSwitch) {
-          onCameraSwitch(targetCameraId, targetViewAngle);
+          onCameraSwitch(targetCameraId, targetViewAngle, symmetricZoomOutFov);
         }
       });
     });
@@ -263,6 +272,12 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       // 创建3D hotspot管理器
       hotspotManagerRef.current = new PanoramaHotspotManager(scene, handleHotspotClick);
 
+      // 如果有初始zoom FOV，启动zoom恢复动画
+      if (initialZoomFov) {
+        console.log(`🎬 Starting with zoom restore animation from zoom-out FOV ${initialZoomFov.toFixed(1)}°`);
+        animateZoomRestore(initialZoomFov);
+      }
+
       // 创建3D hotspot
       setTimeout(() => {
         if (hotspotManagerRef.current && tourData) {
@@ -310,6 +325,26 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
         onError(errorMessage);
       }
     }
+  };
+
+  /**
+   * 根据距离动态计算zoom FOV - 确保完美拼接
+   */
+  const calculateZoomFov = (distance: number): number => {
+    const normalFov = 75;
+    const minZoomAmount = 8;   // 最远距离的最小变化量
+    const maxZoomAmount = 25;  // 最近距离的最大变化量
+    const maxDistance = 5.0;   // 最大考虑距离
+
+    // 距离越近，zoom变化量越大
+    const normalizedDistance = Math.min(distance / maxDistance, 1);
+    const zoomAmount = maxZoomAmount - (maxZoomAmount - minZoomAmount) * normalizedDistance;
+
+    // A的目标FOV
+    const targetFov = normalFov - zoomAmount;
+
+    console.log(`📏 Distance: ${distance.toFixed(2)} → Normalized: ${normalizedDistance.toFixed(2)} → Zoom amount: ${zoomAmount.toFixed(1)}° → Target FOV: ${targetFov.toFixed(1)}°`);
+    return targetFov;
   };
 
   /**
@@ -378,18 +413,18 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
   };
 
   /**
-   * 动画zoom in效果
+   * 动画zoom in效果 + fade out
    */
-  const animateZoomIn = (onComplete?: () => void) => {
-    if (!cameraRef.current) return;
+  const animateZoomIn = (targetFov: number, onComplete?: () => void) => {
+    if (!cameraRef.current || !containerRef.current) return;
 
     const camera = cameraRef.current;
+    const container = containerRef.current;
     const startFov = camera.fov;
-    const targetFov = Math.max(20, startFov * 0.4); // zoom in到40%，但不小于20度
     const duration = 2000; // 2秒动画
     const startTime = Date.now();
 
-    console.log(`🔍 Starting zoom in animation from FOV ${startFov.toFixed(1)}° to ${targetFov.toFixed(1)}°`);
+    console.log(`🔍 Starting zoom in + fade out animation from FOV ${startFov.toFixed(1)}° to ${targetFov.toFixed(1)}°`);
 
     const animate = () => {
       const elapsed = Date.now() - startTime;
@@ -407,10 +442,64 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       camera.fov = currentFov;
       camera.updateProjectionMatrix();
 
+      // 同时进行fade out（透明度从1到0）
+      const opacity = 1 - progress;
+      container.style.opacity = opacity.toString();
+
       if (progress < 1) {
         requestAnimationFrame(animate);
       } else {
-        console.log(`✅ Zoom in animation completed, final FOV: ${currentFov.toFixed(1)}°`);
+        console.log(`✅ Zoom in + fade out animation completed, final FOV: ${currentFov.toFixed(1)}°, opacity: 0`);
+        if (onComplete) {
+          onComplete();
+        }
+      }
+    };
+
+    animate();
+  };
+
+  /**
+   * 从zoom out状态恢复到正常FOV + fade in
+   */
+  const animateZoomRestore = (zoomOutFov: number, onComplete?: () => void) => {
+    if (!cameraRef.current || !containerRef.current) return;
+
+    const camera = cameraRef.current;
+    const container = containerRef.current;
+    const targetFov = 75; // 恢复到正常FOV
+    const duration = 2000; // 2秒动画
+    const startTime = Date.now();
+
+    console.log(`🔍 Starting zoom restore + fade in animation from zoom-out FOV ${zoomOutFov.toFixed(1)}° to normal FOV ${targetFov.toFixed(1)}°`);
+
+    // 立即设置起始FOV（zoom out状态）和透明度为0
+    camera.fov = zoomOutFov;
+    camera.updateProjectionMatrix();
+    container.style.opacity = '0';
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // 使用easeOutQuad缓动函数，让恢复更自然
+      const easeProgress = 1 - Math.pow(1 - progress, 2);
+
+      // 计算当前FOV（从zoom out状态恢复到正常状态）
+      const currentFov = zoomOutFov + (targetFov - zoomOutFov) * easeProgress;
+
+      // 更新相机FOV
+      camera.fov = currentFov;
+      camera.updateProjectionMatrix();
+
+      // 同时进行fade in（透明度从0到1）
+      const opacity = progress;
+      container.style.opacity = opacity.toString();
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        console.log(`✅ Zoom restore + fade in animation completed, final FOV: ${currentFov.toFixed(1)}°, opacity: 1`);
         if (onComplete) {
           onComplete();
         }
@@ -623,42 +712,23 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
 
   return (
     <div className="panorama-viewer">
-      {state.isLoading && (
-        <div className="panorama-loading">
-          <div className="loading-content">
-            <h3>Loading Panorama</h3>
-            <div className="progress-bar">
-              <div 
-                className="progress-fill" 
-                style={{ width: `${state.loadingProgress}%` }}
-              />
-            </div>
-            <p>Camera {cameraId} - {state.loadingProgress}%</p>
-            <p className="hint">Press ESC to return to Bird View</p>
-          </div>
-        </div>
-      )}
-      
       <div
         ref={containerRef}
         className="panorama-container"
         style={{
           width: '100%',
-          height: '100%',
-          visibility: state.isLoading ? 'hidden' : 'visible'
+          height: '100%'
         }}
       />
 
-      {!state.isLoading && (
-        <div className="panorama-controls">
-          <button onClick={onEscape} className="escape-button">
-            ← Back to Bird View (ESC)
-          </button>
-          <div className="camera-info">
-            Camera {cameraId}
-          </div>
+      <div className="panorama-controls">
+        <button onClick={onEscape} className="escape-button">
+          ← Back to Bird View (ESC)
+        </button>
+        <div className="camera-info">
+          Camera {cameraId}
         </div>
-      )}
+      </div>
     </div>
   );
 };

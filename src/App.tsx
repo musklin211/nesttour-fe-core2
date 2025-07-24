@@ -21,14 +21,19 @@ const App: React.FC = () => {
 
   // 视角状态，用于在相机切换时保持视角连续性
   const [currentViewAngle, setCurrentViewAngle] = useState<{ lon: number; lat: number } | undefined>(undefined);
+  // zoom状态，用于实现无缝的zoom过渡
+  const [currentZoomFov, setCurrentZoomFov] = useState<number | undefined>(undefined);
 
-  // 处理相机切换，保持视角连续性
-  const handleCameraSwitch = (cameraId: number, viewAngle?: { lon: number; lat: number }) => {
-    console.log(`🔄 Camera switch: ${currentCameraId} → ${cameraId}, view angle:`, viewAngle);
+  // 处理相机切换，保持视角连续性和zoom过渡
+  const handleCameraSwitch = (cameraId: number, viewAngle?: { lon: number; lat: number }, zoomFov?: number) => {
+    console.log(`🔄 Camera switch: ${currentCameraId} → ${cameraId}, view angle:`, viewAngle, `zoom FOV:`, zoomFov);
 
-    // 保存当前视角
+    // 保存当前视角和zoom状态
     if (viewAngle) {
       setCurrentViewAngle(viewAngle);
+    }
+    if (zoomFov) {
+      setCurrentZoomFov(zoomFov);
     }
 
     // 切换相机
@@ -70,8 +75,9 @@ const App: React.FC = () => {
         <BirdView
           tourData={tourData}
           onCameraSelect={(cameraId) => {
-            // 从Bird-view切换时清除视角状态，使用默认朝向
+            // 从Bird-view切换时清除视角和zoom状态，使用默认朝向
             setCurrentViewAngle(undefined);
+            setCurrentZoomFov(undefined);
             switchToPanoView(cameraId);
           }}
         />
@@ -83,6 +89,7 @@ const App: React.FC = () => {
           onError={(error) => console.error('Panorama error:', error)}
           onCameraSwitch={handleCameraSwitch}
           initialViewAngle={currentViewAngle}
+          initialZoomFov={currentZoomFov}
         />
       )}
     </div>

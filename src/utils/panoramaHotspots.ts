@@ -14,11 +14,11 @@ export class PanoramaHotspotManager {
   private scene: THREE.Scene;
   private currentCameraId: number;
   private hotspots: PanoramaHotspot3D[] = [];
-  private onCameraClick?: (cameraId: number, targetViewAngle?: { lon: number; lat: number }) => void;
+  private onCameraClick?: (cameraId: number, targetViewAngle?: { lon: number; lat: number }, distance?: number) => void;
   private raycaster: THREE.Raycaster;
   private mouse: THREE.Vector2;
 
-  constructor(scene: THREE.Scene, onCameraClick?: (cameraId: number, targetViewAngle?: { lon: number; lat: number }) => void) {
+  constructor(scene: THREE.Scene, onCameraClick?: (cameraId: number, targetViewAngle?: { lon: number; lat: number }, distance?: number) => void) {
     this.scene = scene;
     this.onCameraClick = onCameraClick;
     this.raycaster = new THREE.Raycaster();
@@ -255,10 +255,10 @@ export class PanoramaHotspotManager {
       const distance = Math.sqrt(ballPosition.x * ballPosition.x + ballPosition.z * ballPosition.z);
       const targetLat = Math.atan2(ballPosition.y, distance) * 180 / Math.PI;
 
-      console.log(`🎯 Target view angle: lon=${targetLon.toFixed(1)}°, lat=${targetLat.toFixed(1)}°`);
+      console.log(`🎯 Target view angle: lon=${targetLon.toFixed(1)}°, lat=${targetLat.toFixed(1)}°, distance=${hotspot.distance.toFixed(2)}`);
 
       if (this.onCameraClick) {
-        this.onCameraClick(cameraId, { lon: targetLon, lat: targetLat });
+        this.onCameraClick(cameraId, { lon: targetLon, lat: targetLat }, hotspot.distance);
       }
     }
   }
