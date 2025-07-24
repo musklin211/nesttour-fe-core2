@@ -379,6 +379,18 @@ export class SceneManager {
 
     console.log(`Raycaster found ${intersects.length} intersections`);
     console.log('Camera nodes group children count:', this.cameraNodesGroup.children.length);
+    console.log('Camera nodes group visible:', this.cameraNodesGroup.visible);
+    console.log('Camera nodes group position:', this.cameraNodesGroup.position);
+    console.log('Mouse position:', this.mouse);
+
+    // 调试：检查第一个相机节点的详细信息
+    if (this.cameraNodesGroup.children.length > 0) {
+      const firstNode = this.cameraNodesGroup.children[0];
+      console.log('First camera node:', firstNode);
+      console.log('First camera node visible:', firstNode.visible);
+      console.log('First camera node position:', firstNode.position);
+      console.log('First camera node children count:', firstNode.children.length);
+    }
 
     if (intersects.length > 0) {
       const clickedObject = intersects[0].object;

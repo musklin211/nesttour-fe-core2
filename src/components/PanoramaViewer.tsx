@@ -35,11 +35,25 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     loadingProgress: 0
   });
 
+  const initOnceRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // 每次cameraId变化时都重新初始化
-    cleanup(); // 先清理之前的资源
+    // 如果已经为这个cameraId初始化过，直接返回
+    if (initOnceRef.current === cameraId) {
+      console.log(`📋 Camera ${cameraId} already initialized, skipping`);
+      return;
+    }
+
+    console.log(`📋 PanoramaViewer initializing for camera ${cameraId}`);
+    initOnceRef.current = cameraId;
+
+    // 确保容器是干净的
+    if (containerRef.current) {
+      containerRef.current.innerHTML = '';
+    }
+
     initializePanorama();
 
     // 添加ESC键监听
@@ -67,7 +81,10 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('resize', handleResize);
-      cleanup();
+      // 只在组件真正卸载时清理，不在cameraId变化时清理
+      if (initOnceRef.current !== cameraId) {
+        cleanup();
+      }
     };
   }, [cameraId, onEscape]);
 
@@ -119,6 +136,11 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       const imageUrl = cameraData.imageUrl;
       console.log(`✅ Found camera mapping: ID ${cameraId} → Label "${cameraData.label}" → Image "${imageUrl}"`);
 
+      // 计算相机的实际朝向方向（-Z方向）
+      const cameraForward = new THREE.Vector3(0, 0, -1); // 相机默认朝向-Z
+      cameraForward.applyQuaternion(cameraData.rotation);
+      console.log(`📷 Camera ${cameraId} forward direction (-Z): (${cameraForward.x.toFixed(3)}, ${cameraForward.y.toFixed(3)}, ${cameraForward.z.toFixed(3)})`);
+
       // 加载纹理
       const textureLoader = new THREE.TextureLoader();
       console.log(`🔄 Loading texture: ${imageUrl}`);
@@ -166,9 +188,10 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       // 设置相机初始位置 (在球心)
       camera.position.set(0, 0, 0.1); // 稍微偏移避免在正中心
 
-      // 设置相机初始朝向 - 朝向+X轴方向 (与蓝色球体的+X轴一致)
+      // 临时回到固定朝向进行调试
       camera.lookAt(1, 0, 0);
-      console.log('Initial camera lookAt: (1, 0, 0) - should be +X axis direction');
+      console.log(`🎯 Panorama using fixed lookAt: (1, 0, 0) for debugging`);
+      console.log(`📊 Camera forward would be: (${cameraForward.x.toFixed(3)}, ${cameraForward.y.toFixed(3)}, ${cameraForward.z.toFixed(3)})`);
 
       // 添加到DOM
       containerRef.current.innerHTML = '';
@@ -255,11 +278,14 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     let isMouseDown = false;
     let mouseX = 0;
     let mouseY = 0;
-    // 初始朝向设置为+X轴方向 (0度)，与相机初始朝向一致
-    let lon = 0;   // 水平角度 - 朝向+X轴
-    let lat = 0;   // 垂直角度 - 水平
 
-    // 设置初始相机朝向
+    // 简单的初始朝向设置
+    let lon = 0;   // 水平角度
+    let lat = 0;   // 垂直角度
+
+    console.log(`🧭 Mouse control initialized with lon=${lon}°, lat=${lat}°`);
+
+    // 设置初始相机朝向（与固定朝向一致）
     updateCameraRotation(camera, 0, 0);
 
     const onMouseDown = (event: MouseEvent) => {
@@ -352,6 +378,8 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
    */
   const cleanup = () => {
     try {
+      console.log(`🧹 Cleaning up PanoramaViewer for camera ${initOnceRef.current}`);
+
       // 停止动画循环
       if (animationIdRef.current) {
         cancelAnimationFrame(animationIdRef.current);
@@ -381,9 +409,12 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       cameraRef.current = null;
       sphereRef.current = null;
 
-      console.log('PanoramaViewer cleaned up');
+      // 重置初始化标记
+      initOnceRef.current = null;
+
+      console.log('✅ PanoramaViewer cleanup completed');
     } catch (error) {
-      console.warn('Error during cleanup:', error);
+      console.warn('❌ Error during cleanup:', error);
     }
   };
 

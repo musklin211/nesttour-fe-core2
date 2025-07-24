@@ -90,11 +90,14 @@ export class CameraNodeVisualizer {
    * 创建相机节点
    */
   public createCameraNodes(cameras: CameraData[]): void {
+    console.log(`Creating ${cameras.length} camera nodes...`);
     cameras.forEach((camera, index) => {
       const nodeGroup = this.createSingleNode(camera);
       this.nodes.set(camera.id, nodeGroup);
       this.sceneManager.cameraNodesGroup.add(nodeGroup);
+      console.log(`✅ Camera node ${camera.id} created and added to scene`);
     });
+    console.log(`📊 Total camera nodes in scene: ${this.sceneManager.cameraNodesGroup.children.length}`);
 
     // 统一输出所有相机的坐标信息，格式：label: model(x, y, z), threeJS(x, y, z)
     console.log('📍 Camera Coordinates:');
@@ -121,7 +124,9 @@ export class CameraNodeVisualizer {
     const sphereMesh = new THREE.Mesh(sphereGeometry, this.materials.normal);
     sphereMesh.castShadow = true;
     sphereMesh.receiveShadow = true;
+    sphereMesh.name = `CameraSphere_${camera.id}`;
     nodeGroup.add(sphereMesh);
+    console.log(`🔵 Sphere created for camera ${camera.id}, material:`, this.materials.normal ? 'OK' : 'MISSING');
 
     // 添加本地坐标轴（如果启用）
     if (this.options.showDirection) {
@@ -131,6 +136,14 @@ export class CameraNodeVisualizer {
       // 应用相机的旋转到坐标轴
       if (camera.rotation && camera.rotation instanceof THREE.Quaternion) {
         localAxes.setRotationFromQuaternion(camera.rotation);
+
+        // 调试：计算相机的实际朝向
+        const cameraForward = new THREE.Vector3(0, 0, -1); // 相机默认朝向-Z
+        cameraForward.applyQuaternion(camera.rotation);
+        console.log(`📷 Camera ${camera.id} forward direction (-Z): (${cameraForward.x.toFixed(3)}, ${cameraForward.y.toFixed(3)}, ${cameraForward.z.toFixed(3)})`);
+
+        // 现在蓝色轴显示的是-Z方向（相机朝向）
+        console.log(`🔵 Camera ${camera.id} blue axis now shows camera forward direction (corrected)`);
       }
     }
 
@@ -340,11 +353,11 @@ export class CameraNodeVisualizer {
     yAxis.name = 'YAxis';
     axesGroup.add(yAxis);
 
-    // Z轴 - 蓝色
+    // Z轴 - 蓝色 (显示相机朝向，即-Z方向)
     const zAxisMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
     const zAxis = new THREE.Mesh(cylinderGeometry, zAxisMaterial);
     zAxis.rotation.x = Math.PI / 2; // 旋转使其指向Z方向
-    zAxis.position.z = axisLength / 2;
+    zAxis.position.z = -axisLength / 2; // 指向-Z方向（相机朝向）
     zAxis.name = 'ZAxis';
     axesGroup.add(zAxis);
 
