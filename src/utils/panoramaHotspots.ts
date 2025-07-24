@@ -14,11 +14,11 @@ export class PanoramaHotspotManager {
   private scene: THREE.Scene;
   private currentCameraId: number;
   private hotspots: PanoramaHotspot3D[] = [];
-  private onCameraClick?: (cameraId: number) => void;
+  private onCameraClick?: (cameraId: number, targetViewAngle?: { lon: number; lat: number }) => void;
   private raycaster: THREE.Raycaster;
   private mouse: THREE.Vector2;
 
-  constructor(scene: THREE.Scene, onCameraClick?: (cameraId: number) => void) {
+  constructor(scene: THREE.Scene, onCameraClick?: (cameraId: number, targetViewAngle?: { lon: number; lat: number }) => void) {
     this.scene = scene;
     this.onCameraClick = onCameraClick;
     this.raycaster = new THREE.Raycaster();
@@ -235,11 +235,30 @@ export class PanoramaHotspotManager {
     if (intersects.length > 0) {
       const clickedMesh = intersects[0].object;
       const cameraId = clickedMesh.userData.cameraId;
-      
-      console.log(`🎯 Hotspot clicked: camera ${cameraId}`);
-      
+
+      // 找到对应的hotspot
+      const hotspot = this.hotspots.find(h => h.camera.id === cameraId);
+      if (!hotspot) return;
+
+      console.log(`🎯 Hotspot clicked: camera ${cameraId}, starting rotation animation`);
+
+      // 计算球体在3D空间中的位置
+      const ballPosition = hotspot.group.position.clone();
+
+      console.log(`🎯 Ball position: (${ballPosition.x.toFixed(2)}, ${ballPosition.y.toFixed(2)}, ${ballPosition.z.toFixed(2)})`);
+
+      // 将3D位置转换为视角角度
+      // 关键发现：全景图的正前方是+X方向！（从lookAt(1,0,0)可以看出）
+      // 球体(1.10, -0.08, 0.17)中，X=1.10是主要分量，说明它几乎在正前方
+      // 所以应该用Z作为"左右偏移"，X作为"前后距离"
+      const targetLon = Math.atan2(ballPosition.z, ballPosition.x) * 180 / Math.PI;
+      const distance = Math.sqrt(ballPosition.x * ballPosition.x + ballPosition.z * ballPosition.z);
+      const targetLat = Math.atan2(ballPosition.y, distance) * 180 / Math.PI;
+
+      console.log(`🎯 Target view angle: lon=${targetLon.toFixed(1)}°, lat=${targetLat.toFixed(1)}°`);
+
       if (this.onCameraClick) {
-        this.onCameraClick(cameraId);
+        this.onCameraClick(cameraId, { lon: targetLon, lat: targetLat });
       }
     }
   }

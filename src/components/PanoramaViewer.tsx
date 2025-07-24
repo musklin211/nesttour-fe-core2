@@ -61,12 +61,27 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
   }, [cameraId, initialViewAngle]);
 
   // 处理hotspot点击
-  const handleHotspotClick = useCallback((targetCameraId: number) => {
-    const currentAngle = viewAngleRef.current;
-    console.log(`🎯 3D Hotspot clicked: switching to camera ${targetCameraId} with view angle lon=${currentAngle.lon}°, lat=${currentAngle.lat}°`);
-    if (onCameraSwitch) {
-      onCameraSwitch(targetCameraId, currentAngle);
+  const handleHotspotClick = useCallback((targetCameraId: number, targetViewAngle?: { lon: number; lat: number }) => {
+    if (!targetViewAngle) {
+      // 如果没有目标视角，使用当前视角
+      const currentAngle = viewAngleRef.current;
+      console.log(`🎯 3D Hotspot clicked: switching to camera ${targetCameraId} with current view angle`);
+      if (onCameraSwitch) {
+        onCameraSwitch(targetCameraId, currentAngle);
+      }
+      return;
     }
+
+    console.log(`🎯 3D Hotspot clicked: rotating to target view angle lon=${targetViewAngle.lon.toFixed(1)}°, lat=${targetViewAngle.lat.toFixed(1)}°`);
+
+    // 开始旋转动画
+    animateToViewAngle(targetViewAngle, () => {
+      // 动画完成后切换相机
+      console.log(`✅ Rotation animation completed, switching to camera ${targetCameraId}`);
+      if (onCameraSwitch) {
+        onCameraSwitch(targetCameraId, targetViewAngle);
+      }
+    });
   }, [onCameraSwitch]);
 
   useEffect(() => {
@@ -311,6 +326,51 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     camera.lookAt(x, y, z);
 
     console.log(`Camera rotation: lon=${lon}°, lat=${lat}° → lookAt(${x.toFixed(3)}, ${y.toFixed(3)}, ${z.toFixed(3)})`);
+  };
+
+  /**
+   * 动画旋转到目标视角
+   */
+  const animateToViewAngle = (targetAngle: { lon: number; lat: number }, onComplete?: () => void) => {
+    const startAngle = { ...viewAngleRef.current };
+    const duration = 800; // 动画持续时间（毫秒）
+    const startTime = Date.now();
+
+    console.log(`🎬 Starting rotation animation from (${startAngle.lon.toFixed(1)}°, ${startAngle.lat.toFixed(1)}°) to (${targetAngle.lon.toFixed(1)}°, ${targetAngle.lat.toFixed(1)}°)`);
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // 使用easeInOutCubic缓动函数
+      const easeProgress = progress < 0.5
+        ? 4 * progress * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+      // 计算当前角度
+      const currentLon = startAngle.lon + (targetAngle.lon - startAngle.lon) * easeProgress;
+      const currentLat = startAngle.lat + (targetAngle.lat - startAngle.lat) * easeProgress;
+
+      // 更新视角
+      viewAngleRef.current = { lon: currentLon, lat: currentLat };
+      setViewAngle({ lon: currentLon, lat: currentLat });
+
+      // 更新相机
+      if (cameraRef.current) {
+        updateCameraRotation(cameraRef.current, currentLon, currentLat);
+      }
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        console.log(`✅ Rotation animation completed`);
+        if (onComplete) {
+          onComplete();
+        }
+      }
+    };
+
+    animate();
   };
 
   /**
