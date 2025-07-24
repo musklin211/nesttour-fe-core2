@@ -237,7 +237,7 @@ export class SceneManager {
       this.coordinateAxes = new CoordinateAxesHelper({
         size: 2.0,
         lineWidth: 0.05,
-        showLabels: true,
+        showLabels: false,  // 不显示X/Y/Z文字标签
         labelSize: 0.3,
         opacity: 0.8
       });

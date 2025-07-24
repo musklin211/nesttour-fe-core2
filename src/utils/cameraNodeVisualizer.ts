@@ -42,7 +42,7 @@ export class CameraNodeVisualizer {
       showLabels: options.showLabels ?? true,
       labelSize: options.labelSize ?? 0.3,
       labelColor: options.labelColor ?? '#ffffff',
-      showDirection: options.showDirection ?? false  // 默认不显示方向指示器
+      showDirection: options.showDirection ?? true  // 默认显示方向指示器
     };
 
     this.createMaterials();

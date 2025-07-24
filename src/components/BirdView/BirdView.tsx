@@ -84,7 +84,7 @@ const BirdView: React.FC<BirdViewProps> = ({ tourData, onCameraSelect }) => {
         hoverColor: 0xff6b6b,
         selectedColor: 0x4ecdc4,
         showLabels: true,
-        showDirection: false  // 默认不显示方向指示器
+        showDirection: true  // 默认显示方向指示器
       });
 
       // 暴露相机可视化器到全局以便调试
