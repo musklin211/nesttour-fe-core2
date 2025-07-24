@@ -1,0 +1,235 @@
+.bird-view {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #1a1a1a;
+}
+
+.bird-view-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.bird-view-container canvas {
+  display: block;
+  outline: none;
+}
+
+/* 加载状态 */
+.bird-view-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: #ffffff;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 30px;
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid #333;
+  border-top: 3px solid #4a90e2;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 16px;
+  margin-bottom: 15px;
+  font-weight: 500;
+}
+
+.loading-progress {
+  width: 200px;
+  height: 4px;
+  background-color: #333;
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 0 auto;
+}
+
+.loading-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4a90e2, #4ecdc4);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* 错误状态 */
+.bird-view-error {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  background-color: #1a1a1a;
+  color: #ffffff;
+  text-align: center;
+  padding: 20px;
+}
+
+.bird-view-error h3 {
+  color: #ff6b6b;
+  margin-bottom: 15px;
+  font-size: 24px;
+}
+
+.bird-view-error p {
+  margin-bottom: 20px;
+  font-size: 16px;
+  opacity: 0.8;
+}
+
+.bird-view-error button {
+  padding: 10px 20px;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+.bird-view-error button:hover {
+  background-color: #357abd;
+}
+
+/* 控制面板 */
+.bird-view-controls {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #ffffff;
+  padding: 15px;
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  max-width: 300px;
+  z-index: 10;
+}
+
+.control-info h4 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  color: #4a90e2;
+}
+
+.control-info p {
+  margin: 5px 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.scene-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.scene-info p {
+  margin: 5px 0;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .bird-view-controls {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    max-width: none;
+    padding: 12px;
+  }
+  
+  .control-info h4 {
+    font-size: 14px;
+  }
+  
+  .control-info p,
+  .scene-info p {
+    font-size: 12px;
+  }
+  
+  .bird-view-loading {
+    padding: 20px;
+  }
+  
+  .loading-text {
+    font-size: 14px;
+  }
+  
+  .loading-progress {
+    width: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .bird-view-controls {
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    margin: 10px;
+    background: rgba(0, 0, 0, 0.9);
+  }
+  
+  .control-info p {
+    display: none;
+  }
+  
+  .control-info h4::after {
+    content: " (Touch to interact)";
+    font-weight: normal;
+    opacity: 0.7;
+  }
+}
+
+/* 性能优化 */
+.bird-view-container {
+  will-change: transform;
+}
+
+/* 禁用文本选择 */
+.bird-view {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* 自定义滚动条（如果需要） */
+.bird-view-controls::-webkit-scrollbar {
+  width: 4px;
+}
+
+.bird-view-controls::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.bird-view-controls::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+.bird-view-controls::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
