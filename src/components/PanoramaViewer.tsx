@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { VirtualTourData, CameraData } from '@/types';
+import { PanoramaHotspotManager } from '@/utils/panoramaHotspots';
 import './PanoramaViewer.css';
 
 interface PanoramaViewerProps {
@@ -8,6 +9,7 @@ interface PanoramaViewerProps {
   tourData?: VirtualTourData;
   onEscape?: () => void;
   onError?: (error: string) => void;
+  onCameraSwitch?: (cameraId: number) => void;
 }
 
 interface PanoramaViewerState {
@@ -20,7 +22,8 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
   cameraId,
   tourData,
   onEscape,
-  onError
+  onError,
+  onCameraSwitch
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -36,6 +39,15 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
   });
 
   const initOnceRef = useRef<number | null>(null);
+  const hotspotManagerRef = useRef<PanoramaHotspotManager | null>(null);
+
+  // 处理hotspot点击
+  const handleHotspotClick = useCallback((targetCameraId: number) => {
+    console.log(`🎯 3D Hotspot clicked: switching to camera ${targetCameraId}`);
+    if (onCameraSwitch) {
+      onCameraSwitch(targetCameraId);
+    }
+  }, [onCameraSwitch]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -94,7 +106,7 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
   const initializePanorama = async () => {
     try {
       console.log(`🚀 Initializing panorama for camera ${cameraId}`);
-      setState({ isLoading: true, error: null, loadingProgress: 0 });
+      setState(prev => ({ ...prev, isLoading: true, error: null, loadingProgress: 0 }));
 
       // 移除冗余的初始化日志
       // console.log('Initializing 360° panorama viewer for camera:', cameraId);
@@ -209,6 +221,16 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
         loadingProgress: 100
       }));
 
+      // 创建3D hotspot管理器
+      hotspotManagerRef.current = new PanoramaHotspotManager(scene, handleHotspotClick);
+
+      // 创建3D hotspot
+      setTimeout(() => {
+        if (hotspotManagerRef.current && tourData) {
+          hotspotManagerRef.current.updateHotspots(cameraData, tourData.cameras, 5);
+        }
+      }, 100); // 延迟一点确保渲染完成
+
       // 移除冗余的全景加载成功日志
       // console.log(`360° panorama loaded successfully for camera ${cameraId}`);
       // console.log('Scene objects:', scene.children.length);
@@ -295,29 +317,44 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       canvas.style.cursor = 'grabbing';
     };
 
-    const onMouseMove = (event: MouseEvent) => {
-      if (!isMouseDown) return;
 
-      const deltaX = event.clientX - mouseX;
-      const deltaY = event.clientY - mouseY;
-
-      mouseX = event.clientX;
-      mouseY = event.clientY;
-
-      // 调整灵敏度
-      lon -= deltaX * 0.2;
-      lat += deltaY * 0.2;
-
-      // 限制垂直角度范围
-      lat = Math.max(-85, Math.min(85, lat));
-
-      // 更新相机朝向
-      updateCameraRotation(camera, lon, lat);
-    };
 
     const onMouseUp = () => {
       isMouseDown = false;
       canvas.style.cursor = 'grab';
+    };
+
+    const onClick = (event: MouseEvent) => {
+      // 处理3D hotspot点击
+      if (hotspotManagerRef.current) {
+        hotspotManagerRef.current.handleClick(event, camera, canvas);
+      }
+    };
+
+    const onMouseMove = (event: MouseEvent) => {
+      if (isMouseDown) {
+        // 拖拽逻辑
+        const deltaX = event.clientX - mouseX;
+        const deltaY = event.clientY - mouseY;
+
+        mouseX = event.clientX;
+        mouseY = event.clientY;
+
+        // 调整灵敏度
+        lon -= deltaX * 0.2;
+        lat += deltaY * 0.2;
+
+        // 限制垂直角度范围
+        lat = Math.max(-85, Math.min(85, lat));
+
+        // 更新相机朝向
+        updateCameraRotation(camera, lon, lat);
+      } else {
+        // hover效果
+        if (hotspotManagerRef.current) {
+          hotspotManagerRef.current.updateHover(event, camera, canvas);
+        }
+      }
     };
 
     const onWheel = (event: WheelEvent) => {
@@ -334,6 +371,7 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     canvas.addEventListener('mousemove', onMouseMove);
     canvas.addEventListener('mouseup', onMouseUp);
     canvas.addEventListener('mouseleave', onMouseUp);
+    canvas.addEventListener('click', onClick);
     canvas.addEventListener('wheel', onWheel);
     canvas.style.cursor = 'grab';
 
@@ -343,6 +381,7 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       canvas.removeEventListener('mousemove', onMouseMove);
       canvas.removeEventListener('mouseup', onMouseUp);
       canvas.removeEventListener('mouseleave', onMouseUp);
+      canvas.removeEventListener('click', onClick);
       canvas.removeEventListener('wheel', onWheel);
     };
   };
@@ -409,6 +448,12 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       cameraRef.current = null;
       sphereRef.current = null;
 
+      // 清理hotspot管理器
+      if (hotspotManagerRef.current) {
+        hotspotManagerRef.current.dispose();
+        hotspotManagerRef.current = null;
+      }
+
       // 重置初始化标记
       initOnceRef.current = null;
 
@@ -450,11 +495,11 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
         </div>
       )}
       
-      <div 
-        ref={containerRef} 
+      <div
+        ref={containerRef}
         className="panorama-container"
-        style={{ 
-          width: '100%', 
+        style={{
+          width: '100%',
           height: '100%',
           visibility: state.isLoading ? 'hidden' : 'visible'
         }}

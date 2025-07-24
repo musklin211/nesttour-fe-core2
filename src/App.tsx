@@ -61,6 +61,7 @@ const App: React.FC = () => {
           tourData={tourData}
           onEscape={switchToBirdView}
           onError={(error) => console.error('Panorama error:', error)}
+          onCameraSwitch={switchToPanoView}
         />
       )}
     </div>
