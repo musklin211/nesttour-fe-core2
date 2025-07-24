@@ -37,13 +37,18 @@
 - [x] 默认启用相机节点坐标轴显示
 - [ ] 性能优化和用户体验改进
 
-### ⏭️ 待实现阶段
+### 🔄 进行中
 
 **第四阶段：Panoramic-view全景查看器**
-- [ ] 集成Marzipano库
-- [ ] 创建全景查看器组件
-- [ ] 实现全景图加载和显示
+- [x] 集成Marzipano库
+- [x] 创建全景查看器组件 (`src/components/PanoramaViewer.tsx`)
+- [x] 实现全景图加载和显示
+- [x] 实现视图切换逻辑 (Bird-view ↔ Panoramic-view)
+- [x] 添加ESC键返回功能
+- [ ] 测试和调试全景图加载
 - [ ] 添加hotspot功能
+
+### ⏭️ 待实现阶段
 
 **第五阶段：视图切换和导航系统**
 - [ ] 实现Bird-view和Panoramic-view间的切换

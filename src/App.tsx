@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ViewMode, VirtualTourData } from '@/types';
 import { useVirtualTour } from '@/hooks/useVirtualTour';
 import BirdView from '@/components/BirdView/BirdView';
-import PanoView from '@/components/PanoView/PanoView';
+import PanoramaViewer from '@/components/PanoramaViewer';
 import LoadingScreen from '@/components/common/LoadingScreen';
 import ErrorScreen from '@/components/common/ErrorScreen';
 import './App.css';
@@ -56,11 +56,10 @@ const App: React.FC = () => {
           onCameraSelect={switchToPanoView}
         />
       ) : (
-        <PanoView
-          tourData={tourData}
-          currentCameraId={currentCameraId}
-          onCameraSwitch={switchToPanoView}
-          onBackToBirdView={switchToBirdView}
+        <PanoramaViewer
+          cameraId={currentCameraId || 1}
+          onEscape={switchToBirdView}
+          onError={(error) => console.error('Panorama error:', error)}
         />
       )}
     </div>

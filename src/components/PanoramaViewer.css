@@ -1,0 +1,222 @@
+/* PanoramaViewer 样式 */
+
+.panorama-viewer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+}
+
+.panorama-container {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+.panorama-container:active {
+  cursor: grabbing;
+}
+
+/* 加载状态 */
+.panorama-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.loading-content {
+  text-align: center;
+  color: white;
+  max-width: 400px;
+  padding: 2rem;
+}
+
+.loading-content h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+  font-weight: 300;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  margin: 1rem 0;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4a90e2, #4ecdc4);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.loading-content p {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.hint {
+  font-size: 0.8rem !important;
+  opacity: 0.6 !important;
+  margin-top: 1rem !important;
+}
+
+/* 错误状态 */
+.panorama-error {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.error-content {
+  text-align: center;
+  color: white;
+  max-width: 400px;
+  padding: 2rem;
+}
+
+.error-content h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: #ff6b6b;
+}
+
+.error-content p {
+  margin: 0 0 2rem 0;
+  font-size: 1rem;
+  opacity: 0.8;
+  line-height: 1.5;
+}
+
+.back-button {
+  background: #4a90e2;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.back-button:hover {
+  background: #357abd;
+}
+
+/* 控制面板 */
+.panorama-controls {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.escape-button {
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  pointer-events: auto;
+  backdrop-filter: blur(10px);
+}
+
+.escape-button:hover {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.camera-info {
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  backdrop-filter: blur(10px);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .panorama-controls {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  
+  .escape-button {
+    width: 100%;
+    text-align: center;
+  }
+  
+  .camera-info {
+    text-align: center;
+  }
+  
+  .loading-content {
+    padding: 1rem;
+  }
+  
+  .error-content {
+    padding: 1rem;
+  }
+}
+
+/* 全屏模式优化 */
+.panorama-viewer:fullscreen {
+  background: #000;
+}
+
+.panorama-viewer:fullscreen .panorama-container {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* 禁用文本选择 */
+.panorama-viewer {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* 平滑过渡 */
+.panorama-container {
+  transition: opacity 0.3s ease;
+}
+
+/* 鼠标悬停效果 */
+.escape-button:focus,
+.back-button:focus {
+  outline: 2px solid #4a90e2;
+  outline-offset: 2px;
+}
