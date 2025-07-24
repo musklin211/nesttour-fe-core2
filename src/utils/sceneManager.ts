@@ -582,7 +582,8 @@ export class SceneManager {
         light.intensity = intensity;
       }
     });
-    console.log(`Directional light intensity set to ${intensity}`);
+    // 移除冗余的光照调整日志
+    // console.log(`Directional light intensity set to ${intensity}`);
   }
 
   /**

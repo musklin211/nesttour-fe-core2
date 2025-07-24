@@ -90,13 +90,15 @@ export class CameraNodeVisualizer {
    * 创建相机节点
    */
   public createCameraNodes(cameras: CameraData[]): void {
-    console.log(`Creating ${cameras.length} camera nodes...`);
+    // 移除冗余的创建日志
+    // console.log(`Creating ${cameras.length} camera nodes...`);
 
     cameras.forEach((camera, index) => {
       // 转换为模型坐标系坐标
       const modelCoordinates = convertThreeJSToModelCoordinates(camera.position);
 
-      console.log(`Creating node ${index + 1}/${cameras.length}: ${camera.label} at position (${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)})`);
+      // 移除冗余的单个节点创建日志
+      // console.log(`Creating node ${index + 1}/${cameras.length}: ${camera.label} at position (${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)})`);
       console.log(`📍 ${camera.label} 模型坐标系坐标: (${modelCoordinates.x.toFixed(2)}, ${modelCoordinates.y.toFixed(2)}, ${modelCoordinates.z.toFixed(2)})`);
 
       const nodeGroup = this.createSingleNode(camera);
@@ -104,7 +106,8 @@ export class CameraNodeVisualizer {
       this.sceneManager.cameraNodesGroup.add(nodeGroup);
     });
 
-    console.log(`Camera nodes created successfully: ${this.nodes.size} nodes added to scene`);
+    // 移除冗余的完成日志
+    // console.log(`Camera nodes created successfully: ${this.nodes.size} nodes added to scene`);
 
     // 输出所有相机的模型坐标系坐标汇总
     console.group('📍 所有相机的模型坐标系坐标汇总:');
@@ -389,7 +392,8 @@ export class CameraNodeVisualizer {
       }
     });
 
-    console.log(`Direction indicators ${show ? 'enabled' : 'disabled'}`);
+    // 移除冗余的方向指示器切换日志
+    // console.log(`Direction indicators ${show ? 'enabled' : 'disabled'}`);
   }
 
   /**

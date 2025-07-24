@@ -80,7 +80,8 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null, loadingProgress: 0 }));
 
-      console.log('Initializing 360° panorama viewer for camera:', cameraId);
+      // 移除冗余的初始化日志
+      // console.log('Initializing 360° panorama viewer for camera:', cameraId);
 
       if (!containerRef.current) {
         throw new Error('Container ref is null');
@@ -108,7 +109,8 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       setState(prev => ({ ...prev, loadingProgress: 25 }));
 
       // 查找对应的相机数据
-      console.log('Available cameras:', tourData?.cameras?.map(cam => ({ id: cam.id, label: cam.label })));
+      // 移除冗余的相机列表日志
+      // console.log('Available cameras:', tourData?.cameras?.map(cam => ({ id: cam.id, label: cam.label })));
       const cameraData = tourData?.cameras?.find(cam => cam.id === cameraId);
       if (!cameraData) {
         throw new Error(`Camera with ID ${cameraId} not found in tour data. Available cameras: ${tourData?.cameras?.map(cam => cam.id).join(', ')}`);
@@ -167,14 +169,15 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
         loadingProgress: 100
       }));
 
-      console.log(`360° panorama loaded successfully for camera ${cameraId}`);
-      console.log('Scene objects:', scene.children.length);
-      console.log('Sphere geometry:', sphere.geometry);
-      console.log('Sphere material:', sphere.material);
-      console.log('Camera position:', camera.position);
-      console.log('Camera rotation:', camera.rotation);
-      console.log('Renderer size:', renderer.getSize(new THREE.Vector2()));
-      console.log('Texture loaded:', texture.image ? `${texture.image.width}x${texture.image.height}` : 'No image');
+      // 移除冗余的全景加载成功日志
+      // console.log(`360° panorama loaded successfully for camera ${cameraId}`);
+      // console.log('Scene objects:', scene.children.length);
+      // console.log('Sphere geometry:', sphere.geometry);
+      // console.log('Sphere material:', sphere.material);
+      // console.log('Camera position:', camera.position);
+      // console.log('Camera rotation:', camera.rotation);
+      // console.log('Renderer size:', renderer.getSize(new THREE.Vector2()));
+      // console.log('Texture loaded:', texture.image ? `${texture.image.width}x${texture.image.height}` : 'No image');
 
       // 暴露到全局以便调试
       (window as any).panoramaDebug = {

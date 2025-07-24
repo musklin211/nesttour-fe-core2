@@ -133,34 +133,36 @@ export async function parseCamerasXML(): Promise<CameraData[]> {
           imageUrl,
         });
 
-        console.log(`✅ Camera ${cameraId} (${label}) mapped correctly:`);
-        console.log(`  XML ID: ${xmlId} → Real Camera ID: ${cameraId}`);
-        console.log(`  Image: ${imageUrl}`);
-        console.log(`  🎯 FINAL POSITION AFTER SCENE ROTATION: (${converted.position.x.toFixed(3)}, ${converted.position.y.toFixed(3)}, ${converted.position.z.toFixed(3)})`);
+        // 移除冗余的相机映射日志
+        // console.log(`✅ Camera ${cameraId} (${label}) mapped correctly:`);
+        // console.log(`  XML ID: ${xmlId} → Real Camera ID: ${cameraId}`);
+        // console.log(`  Image: ${imageUrl}`);
+        // console.log(`  🎯 FINAL POSITION AFTER SCENE ROTATION: (${converted.position.x.toFixed(3)}, ${converted.position.y.toFixed(3)}, ${converted.position.z.toFixed(3)})`);
 
         // 调试模式下打印详细信息
-        if (process.env.NODE_ENV === 'development' && cameras.length < 3) {
-          debugTransformMatrix(matrix, `Camera ${cameraId} (${label})`);
-        }
+        // if (process.env.NODE_ENV === 'development' && cameras.length < 3) {
+        //   debugTransformMatrix(matrix, `Camera ${cameraId} (${label})`);
+        // }
       } catch (error) {
         console.error(`Error parsing camera ${cameraId}:`, error);
       }
     });
 
-    console.log(`Parsed ${cameras.length} cameras from XML`);
+    // 移除冗余的解析统计日志
+    // console.log(`Parsed ${cameras.length} cameras from XML`);
 
     // 计算并显示统计信息
-    if (cameras.length > 0) {
-      const stats = calculateCameraStatistics(cameras);
-      console.log('Camera Statistics:', {
-        count: stats.count,
-        boundingBox: {
-          min: `(${stats.boundingBox.min.x.toFixed(3)}, ${stats.boundingBox.min.y.toFixed(3)}, ${stats.boundingBox.min.z.toFixed(3)})`,
-          max: `(${stats.boundingBox.max.x.toFixed(3)}, ${stats.boundingBox.max.y.toFixed(3)}, ${stats.boundingBox.max.z.toFixed(3)})`
-        },
-        center: `(${stats.center.x.toFixed(3)}, ${stats.center.y.toFixed(3)}, ${stats.center.z.toFixed(3)})`,
-        averageDistance: stats.averageDistance.toFixed(3)
-      });
+    // if (cameras.length > 0) {
+    //   const stats = calculateCameraStatistics(cameras);
+    //   console.log('Camera Statistics:', {
+    //     count: stats.count,
+    //     boundingBox: {
+    //       min: `(${stats.boundingBox.min.x.toFixed(3)}, ${stats.boundingBox.min.y.toFixed(3)}, ${stats.boundingBox.min.z.toFixed(3)})`,
+    //       max: `(${stats.boundingBox.max.x.toFixed(3)}, ${stats.boundingBox.max.y.toFixed(3)}, ${stats.boundingBox.max.z.toFixed(3)})`
+    //     },
+    //     center: `(${stats.center.x.toFixed(3)}, ${stats.center.y.toFixed(3)}, ${stats.center.z.toFixed(3)})`,
+    //     averageDistance: stats.averageDistance.toFixed(3)
+    //   });
 
       // 检查是否所有相机都在同一位置
       const size = {
@@ -189,7 +191,8 @@ export async function parseVirtualTourData(): Promise<VirtualTourData> {
   return getCachedData(
     CACHE_KEYS.VIRTUAL_TOUR_DATA,
     async () => {
-      console.log('Starting to parse virtual tour data...');
+      // 移除冗余的解析开始日志
+      // console.log('Starting to parse virtual tour data...');
 
       // 解析相机数据
       const cameras = await parseCamerasXML();
@@ -216,10 +219,11 @@ export async function parseVirtualTourData(): Promise<VirtualTourData> {
       console.warn('Data validation warnings:', validation.warnings);
     }
 
-      console.log('Virtual tour data parsed and validated successfully:', {
-        cameras: tourData.cameras.length,
-        model: tourData.model.url
-      });
+      // 移除冗余的解析完成日志
+      // console.log('Virtual tour data parsed and validated successfully:', {
+      //   cameras: tourData.cameras.length,
+      //   model: tourData.model.url
+      // });
 
       // 运行调试检查
       runBasicDebugChecks(tourData);

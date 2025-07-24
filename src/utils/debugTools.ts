@@ -318,21 +318,22 @@ export function createDebugPanel(sceneManager: any, cameraVisualizer: any): void
     }
   };
 
-  console.log('🛠️ Debug panel created! Use window.debugVirtualTour to access debug functions:');
-  console.log('- debugVirtualTour.visualizeCameras()');
-  console.log('- debugVirtualTour.analyzeDistances()');
-  console.log('- debugVirtualTour.checkIntegrity()');
-  console.log('- debugVirtualTour.analyzePerformance()');
-  console.log('- debugVirtualTour.exportData()');
-  console.log('- debugVirtualTour.showCache()');
-  console.log('- debugVirtualTour.testCoordinates()');
-  console.log('- debugVirtualTour.showAxes() / hideAxes()');
-  console.log('- debugVirtualTour.scaleAxes(scale)');
-  console.log('- debugVirtualTour.rotateContent(x, y, z)');
-  console.log('- debugVirtualTour.rotateContentX(degrees)');
-  console.log('- debugVirtualTour.showDirectionIndicators() / hideDirectionIndicators()');
-  console.log('- debugVirtualTour.checkTextures()');
-  console.log('- debugVirtualTour.checkLighting()');
+  // 移除冗余的调试面板创建日志
+  // console.log('🛠️ Debug panel created! Use window.debugVirtualTour to access debug functions:');
+  // console.log('- debugVirtualTour.visualizeCameras()');
+  // console.log('- debugVirtualTour.analyzeDistances()');
+  // console.log('- debugVirtualTour.checkIntegrity()');
+  // console.log('- debugVirtualTour.analyzePerformance()');
+  // console.log('- debugVirtualTour.exportData()');
+  // console.log('- debugVirtualTour.showCache()');
+  // console.log('- debugVirtualTour.testCoordinates()');
+  // console.log('- debugVirtualTour.showAxes() / hideAxes()');
+  // console.log('- debugVirtualTour.scaleAxes(scale)');
+  // console.log('- debugVirtualTour.rotateContent(x, y, z)');
+  // console.log('- debugVirtualTour.rotateContentX(degrees)');
+  // console.log('- debugVirtualTour.showDirectionIndicators() / hideDirectionIndicators()');
+  // console.log('- debugVirtualTour.checkTextures()');
+  // console.log('- debugVirtualTour.checkLighting()');
 }
 
 /**
@@ -340,9 +341,10 @@ export function createDebugPanel(sceneManager: any, cameraVisualizer: any): void
  */
 export function runBasicDebugChecks(tourData: VirtualTourData): void {
   if (process.env.NODE_ENV === 'development') {
-    console.log('🔧 Running basic debug checks...');
-    checkDataIntegrity(tourData);
-    visualizeCameraPositions(tourData.cameras);
+    // 移除冗余的调试检查日志
+    // console.log('🔧 Running basic debug checks...');
+    // checkDataIntegrity(tourData);
+    // visualizeCameraPositions(tourData.cameras);
     createDebugPanel(tourData);
   }
 }

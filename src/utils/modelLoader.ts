@@ -73,8 +73,9 @@ export class ModelLoader {
         url,
         (gltf) => resolve(gltf),
         (progress) => {
-          const percent = (progress.loaded / progress.total) * 100;
-          console.log(`Model loading progress: ${percent.toFixed(1)}%`);
+          // 移除冗余的进度日志
+          // const percent = (progress.loaded / progress.total) * 100;
+          // console.log(`Model loading progress: ${percent.toFixed(1)}%`);
         },
         (error) => reject(error)
       );
@@ -100,11 +101,12 @@ export class ModelLoader {
       model.rotation.copy(options.rotation);
     }
 
-    console.log('Applied transforms:', {
-      scale: model.scale.toArray(),
-      position: model.position.toArray(),
-      rotation: model.rotation.toArray()
-    });
+    // 移除冗余的变换日志
+    // console.log('Applied transforms:', {
+    //   scale: model.scale.toArray(),
+    //   position: model.position.toArray(),
+    //   rotation: model.rotation.toArray()
+    // });
   }
 
   /**
@@ -162,8 +164,9 @@ export class ModelLoader {
         url,
         (texture) => resolve(texture),
         (progress) => {
-          const percent = (progress.loaded / progress.total) * 100;
-          console.log(`Texture loading progress: ${percent.toFixed(1)}%`);
+          // 移除冗余的纹理加载进度日志
+          // const percent = (progress.loaded / progress.total) * 100;
+          // console.log(`Texture loading progress: ${percent.toFixed(1)}%`);
         },
         (error) => reject(error)
       );
@@ -174,7 +177,8 @@ export class ModelLoader {
    * 将纹理应用到材质
    */
   private applyTextureToMaterial(material: THREE.Material, texture: THREE.Texture): boolean {
-    console.log(`Processing material: ${material.type}`);
+    // 移除冗余的材质处理日志
+    // console.log(`Processing material: ${material.type}`);
 
     if (material instanceof THREE.MeshStandardMaterial ||
         material instanceof THREE.MeshBasicMaterial ||

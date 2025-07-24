@@ -97,27 +97,31 @@ const BirdView: React.FC<BirdViewProps> = ({ tourData, onCameraSelect }) => {
       (window as any).showDirectionIndicators = () => {
         if (nodeVisualizerRef.current) {
           nodeVisualizerRef.current.toggleDirectionIndicators(true);
-          console.log('Direction indicators enabled');
+          // 移除冗余的方向指示器日志
+          // console.log('Direction indicators enabled');
         }
       };
 
       (window as any).hideDirectionIndicators = () => {
         if (nodeVisualizerRef.current) {
           nodeVisualizerRef.current.toggleDirectionIndicators(false);
-          console.log('Direction indicators disabled');
+          // 移除冗余的方向指示器日志
+          // console.log('Direction indicators disabled');
         }
       };
 
       // 测试点击功能
       (window as any).testCameraClick = (cameraId: number = 3) => {
-        console.log(`Testing camera click for camera ${cameraId}`);
+        // 移除冗余的测试点击日志
+        // console.log(`Testing camera click for camera ${cameraId}`);
         onCameraSelect(cameraId);
       };
 
       // 创建调试面板
       (window as any).debugVirtualTour = createDebugPanel(sceneManager, nodeVisualizerRef.current);
 
-      console.log('3D scene initialized successfully');
+      // 移除冗余的初始化成功日志
+      // console.log('3D scene initialized successfully');
     } catch (err) {
       console.error('Failed to initialize scene:', err);
       setError('Failed to initialize 3D scene');
@@ -201,7 +205,8 @@ const BirdView: React.FC<BirdViewProps> = ({ tourData, onCameraSelect }) => {
       sceneManagerRef.current.controls.update();
     }
 
-    console.log('Camera view adjusted to fit scene');
+    // 移除冗余的相机调整日志
+    // console.log('Camera view adjusted to fit scene');
   };
 
   /**
