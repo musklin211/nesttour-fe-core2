@@ -140,12 +140,10 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       // 旋转完成后开始zoom in动画
       console.log(`✅ Rotation animation completed, starting zoom in to FOV ${zoomFov.toFixed(1)}°`);
       animateZoomIn(zoomFov, () => {
-        // zoom in到一半时开始切换相机，实现交叉过渡
-        const normalFov = 75;
-        const zoomAmount = normalFov - zoomFov; // 计算zoom in的量
-        const symmetricZoomOutFov = normalFov + zoomAmount; // B的起始FOV应该是对称的zoom out状态
+        // zoom in到一半时开始切换相机，使用视觉距离计算
+        const symmetricZoomOutFov = calculateSymmetricZoomOutFov(distance || 3.0);
 
-        console.log(`🔄 Zoom in halfway completed, starting crossfade transition. A zoomed in by ${zoomAmount.toFixed(1)}°, B will start with zoom out FOV ${symmetricZoomOutFov.toFixed(1)}°`);
+        console.log(`🔄 Zoom in halfway completed, starting crossfade transition. A reached FOV ${zoomFov.toFixed(1)}°, B will start with zoom out FOV ${symmetricZoomOutFov.toFixed(1)}°`);
         if (onCameraSwitch) {
           onCameraSwitch(targetCameraId, targetViewAngle, symmetricZoomOutFov);
         }
@@ -392,23 +390,51 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
   };
 
   /**
-   * 根据距离动态计算zoom FOV - 确保完美拼接
+   * 基于视觉距离的动态zoom计算 - 方案1实现
    */
-  const calculateZoomFov = (distance: number): number => {
+  const calculateVisualApproachZoom = (distance: number, approachFactor: number): number => {
     const normalFov = 75;
-    const minZoomAmount = 8;   // 最远距离的最小变化量
-    const maxZoomAmount = 25;  // 最近距离的最大变化量
+    const minZoomAmount = 15;  // 最近距离的最小变化量
+    const maxZoomAmount = 50;  // 最远距离的最大变化量
     const maxDistance = 5.0;   // 最大考虑距离
 
-    // 距离越近，zoom变化量越大
+    // 计算基础zoom量（距离越远，zoom变化越大）
     const normalizedDistance = Math.min(distance / maxDistance, 1);
-    const zoomAmount = maxZoomAmount - (maxZoomAmount - minZoomAmount) * normalizedDistance;
+    const baseZoomAmount = minZoomAmount + (maxZoomAmount - minZoomAmount) * normalizedDistance;
 
-    // A的目标FOV
-    const targetFov = normalFov - zoomAmount;
+    // 根据接近程度调整zoom量
+    const adjustedZoomAmount = baseZoomAmount * approachFactor;
 
-    console.log(`📏 Distance: ${distance.toFixed(2)} → Normalized: ${normalizedDistance.toFixed(2)} → Zoom amount: ${zoomAmount.toFixed(1)}° → Target FOV: ${targetFov.toFixed(1)}°`);
+    // 计算目标FOV
+    const targetFov = normalFov - adjustedZoomAmount;
+
+    console.log(`📏 Distance: ${distance.toFixed(2)} → Base zoom: ${baseZoomAmount.toFixed(1)}° → Approach factor: ${approachFactor} → Adjusted zoom: ${adjustedZoomAmount.toFixed(1)}° → Target FOV: ${targetFov.toFixed(1)}°`);
     return targetFov;
+  };
+
+  /**
+   * 计算A的zoom FOV（模拟走向目标100%距离，但在50%时切换）
+   */
+  const calculateZoomFov = (distance: number): number => {
+    const approachFactor = 1.0; // A走完整距离，但在50%时切换
+    return calculateVisualApproachZoom(distance, approachFactor);
+  };
+
+  /**
+   * 计算B的起始zoom FOV（与A的最终状态匹配）
+   */
+  const calculateSymmetricZoomOutFov = (distance: number): number => {
+    const normalFov = 75;
+
+    // B的起始状态应该与A的最终状态相同
+    const aFinalFov = calculateVisualApproachZoom(distance, 1.0);
+    const aZoomAmount = normalFov - aFinalFov;
+
+    // B的起始FOV = 正常FOV + 相同的zoom量
+    const symmetricZoomOutFov = normalFov + aZoomAmount;
+
+    console.log(`🔄 B calculation: distance=${distance.toFixed(2)} → A final FOV=${aFinalFov.toFixed(1)}° → A zoom amount=${aZoomAmount.toFixed(1)}° → B start FOV=${symmetricZoomOutFov.toFixed(1)}°`);
+    return symmetricZoomOutFov;
   };
 
   /**
@@ -536,23 +562,16 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       camera.fov = currentFov;
       camera.updateProjectionMatrix();
 
-      // fade out只到50%，然后保持50%（确保A+B总opacity=100%）
-      const opacity = progress <= 0.5 ? 1 - progress : 0.5;
+      // fade out到0%（完全透明）
+      const opacity = 1 - progress;
       container.style.opacity = opacity.toString();
-
-      // 在50%进度时触发场景切换（交叉过渡）
-      if (progress >= 0.5 && !hasTriggeredSwitch && onComplete) {
-        hasTriggeredSwitch = true;
-        console.log(`🔄 Zoom in reached 50%, triggering crossfade transition. A opacity: 50%, B will start at 50%`);
-        onComplete();
-      }
 
       if (progress < 1) {
         requestAnimationFrame(animate);
       } else {
         console.log(`✅ Zoom in + fade out animation completed, final FOV: ${currentFov.toFixed(1)}°, opacity: 0`);
-        // 如果还没触发切换（理论上不应该发生），在这里触发
-        if (!hasTriggeredSwitch && onComplete) {
+        // 动画完成后立即触发切换
+        if (onComplete) {
           onComplete();
         }
       }
@@ -575,10 +594,10 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
 
     console.log(`🔍 Starting zoom restore + fade in animation from zoom-out FOV ${zoomOutFov.toFixed(1)}° to normal FOV ${targetFov.toFixed(1)}°`);
 
-    // 立即设置起始FOV（zoom out状态）和透明度为50%
+    // 立即设置起始FOV（zoom out状态）和透明度为0
     camera.fov = zoomOutFov;
     camera.updateProjectionMatrix();
-    container.style.opacity = '0.5'; // 从50%开始，确保无黑屏
+    container.style.opacity = '0'; // 从0开始fade in
 
     const animate = () => {
       const elapsed = Date.now() - startTime;
@@ -594,8 +613,8 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       camera.fov = currentFov;
       camera.updateProjectionMatrix();
 
-      // fade in从50%到100%（确保A+B总opacity=100%）
-      const opacity = 0.5 + (0.5 * progress);
+      // fade in从0%到100%
+      const opacity = progress;
       container.style.opacity = opacity.toString();
 
       if (progress < 1) {
