@@ -45,6 +45,9 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
   const initOnceRef = useRef<number | null>(null);
   const hotspotManagerRef = useRef<PanoramaHotspotManager | null>(null);
 
+  // 预加载纹理缓存
+  const preloadedTexturesRef = useRef<Map<number, THREE.Texture>>(new Map());
+
   // 视角状态 - 使用ref存储实时值，state用于传递给父组件
   const viewAngleRef = useRef({
     lon: initialViewAngle?.lon ?? 0,
@@ -62,6 +65,54 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     setViewAngle(newAngle);
   }, [cameraId, initialViewAngle]);
 
+  /**
+   * 预加载目标相机的纹理
+   */
+  const preloadTexture = useCallback((targetCameraId: number): Promise<THREE.Texture> => {
+    return new Promise((resolve, reject) => {
+      // 检查是否已经预加载过
+      const cached = preloadedTexturesRef.current.get(targetCameraId);
+      if (cached) {
+        console.log(`📦 Using cached texture for camera ${targetCameraId}`);
+        resolve(cached);
+        return;
+      }
+
+      // 查找目标相机
+      const targetCamera = tourData?.cameras.find(cam => cam.id === targetCameraId);
+      if (!targetCamera) {
+        reject(new Error(`Camera ${targetCameraId} not found`));
+        return;
+      }
+
+      const imagePath = `/data/sample-space/frames/${targetCamera.label}.JPG`;
+      console.log(`🔄 Preloading texture for camera ${targetCameraId}: ${imagePath}`);
+
+      const loader = new THREE.TextureLoader();
+      loader.load(
+        imagePath,
+        (texture) => {
+          // 设置纹理参数
+          texture.mapping = THREE.EquirectangularReflectionMapping;
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.ClampToEdgeWrapping;
+          texture.minFilter = THREE.LinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+
+          // 缓存纹理
+          preloadedTexturesRef.current.set(targetCameraId, texture);
+          console.log(`✅ Texture preloaded for camera ${targetCameraId}`);
+          resolve(texture);
+        },
+        undefined,
+        (error) => {
+          console.error(`❌ Failed to preload texture for camera ${targetCameraId}:`, error);
+          reject(error);
+        }
+      );
+    });
+  }, [tourData]);
+
   // 处理hotspot点击
   const handleHotspotClick = useCallback((targetCameraId: number, targetViewAngle?: { lon: number; lat: number }, distance?: number) => {
     if (!targetViewAngle) {
@@ -76,6 +127,11 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
 
     console.log(`🎯 3D Hotspot clicked: rotating to target view angle lon=${targetViewAngle.lon.toFixed(1)}°, lat=${targetViewAngle.lat.toFixed(1)}°, distance=${distance?.toFixed(2)}`);
 
+    // 立即开始预加载目标纹理
+    preloadTexture(targetCameraId).catch(error => {
+      console.error(`Failed to preload texture for camera ${targetCameraId}:`, error);
+    });
+
     // 根据距离计算zoom程度
     const zoomFov = calculateZoomFov(distance || 3.0);
 
@@ -84,12 +140,12 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       // 旋转完成后开始zoom in动画
       console.log(`✅ Rotation animation completed, starting zoom in to FOV ${zoomFov.toFixed(1)}°`);
       animateZoomIn(zoomFov, () => {
-        // zoom in完成后切换相机，传递对称的zoom out FOV
+        // zoom in到一半时开始切换相机，实现交叉过渡
         const normalFov = 75;
         const zoomAmount = normalFov - zoomFov; // 计算zoom in的量
         const symmetricZoomOutFov = normalFov + zoomAmount; // B的起始FOV应该是对称的zoom out状态
 
-        console.log(`✅ Zoom in animation completed, A zoomed in by ${zoomAmount.toFixed(1)}°, B will start with zoom out FOV ${symmetricZoomOutFov.toFixed(1)}°`);
+        console.log(`🔄 Zoom in halfway completed, starting crossfade transition. A zoomed in by ${zoomAmount.toFixed(1)}°, B will start with zoom out FOV ${symmetricZoomOutFov.toFixed(1)}°`);
         if (onCameraSwitch) {
           onCameraSwitch(targetCameraId, targetViewAngle, symmetricZoomOutFov);
         }
@@ -201,27 +257,35 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       cameraForward.applyQuaternion(cameraData.rotation);
       console.log(`📷 Camera ${cameraId} forward direction (-Z): (${cameraForward.x.toFixed(3)}, ${cameraForward.y.toFixed(3)}, ${cameraForward.z.toFixed(3)})`);
 
-      // 加载纹理
-      const textureLoader = new THREE.TextureLoader();
-      console.log(`🔄 Loading texture: ${imageUrl}`);
+      // 尝试使用预加载的纹理，否则正常加载
+      let texture: THREE.Texture;
+      const preloadedTexture = preloadedTexturesRef.current.get(cameraId);
 
-      const texture = await new Promise<THREE.Texture>((resolve, reject) => {
-        textureLoader.load(
-          imageUrl,
-          (loadedTexture) => {
-            console.log(`✅ Texture loaded successfully: ${imageUrl}`);
-            console.log(`Texture size: ${loadedTexture.image.width}x${loadedTexture.image.height}`);
-            resolve(loadedTexture);
-          },
-          (progress) => {
-            console.log(`📊 Texture loading progress: ${(progress.loaded / progress.total * 100).toFixed(1)}%`);
-          },
-          (error) => {
-            console.error(`❌ Failed to load texture: ${imageUrl}`, error);
-            reject(error);
-          }
-        );
-      });
+      if (preloadedTexture) {
+        console.log(`📦 Using preloaded texture for camera ${cameraId}`);
+        texture = preloadedTexture;
+      } else {
+        console.log(`🔄 Loading texture normally: ${imageUrl}`);
+        const textureLoader = new THREE.TextureLoader();
+
+        texture = await new Promise<THREE.Texture>((resolve, reject) => {
+          textureLoader.load(
+            imageUrl,
+            (loadedTexture) => {
+              console.log(`✅ Texture loaded successfully: ${imageUrl}`);
+              console.log(`Texture size: ${loadedTexture.image.width}x${loadedTexture.image.height}`);
+              resolve(loadedTexture);
+            },
+            (progress) => {
+              console.log(`📊 Texture loading progress: ${(progress.loaded / progress.total * 100).toFixed(1)}%`);
+            },
+            (error) => {
+              console.error(`❌ Failed to load texture: ${imageUrl}`, error);
+              reject(error);
+            }
+          );
+        });
+      }
 
       setState(prev => ({ ...prev, loadingProgress: 50 }));
 
@@ -442,7 +506,7 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
   };
 
   /**
-   * 动画zoom in效果 + fade out
+   * 动画zoom in效果 + fade out（在50%时触发切换）
    */
   const animateZoomIn = (targetFov: number, onComplete?: () => void) => {
     if (!cameraRef.current || !containerRef.current) return;
@@ -452,6 +516,7 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     const startFov = camera.fov;
     const duration = 2000; // 2秒动画
     const startTime = Date.now();
+    let hasTriggeredSwitch = false; // 标记是否已触发切换
 
     console.log(`🔍 Starting zoom in + fade out animation from FOV ${startFov.toFixed(1)}° to ${targetFov.toFixed(1)}°`);
 
@@ -471,15 +536,23 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       camera.fov = currentFov;
       camera.updateProjectionMatrix();
 
-      // 同时进行fade out（透明度从1到0）
-      const opacity = 1 - progress;
+      // fade out只到50%，然后保持50%（确保A+B总opacity=100%）
+      const opacity = progress <= 0.5 ? 1 - progress : 0.5;
       container.style.opacity = opacity.toString();
+
+      // 在50%进度时触发场景切换（交叉过渡）
+      if (progress >= 0.5 && !hasTriggeredSwitch && onComplete) {
+        hasTriggeredSwitch = true;
+        console.log(`🔄 Zoom in reached 50%, triggering crossfade transition. A opacity: 50%, B will start at 50%`);
+        onComplete();
+      }
 
       if (progress < 1) {
         requestAnimationFrame(animate);
       } else {
         console.log(`✅ Zoom in + fade out animation completed, final FOV: ${currentFov.toFixed(1)}°, opacity: 0`);
-        if (onComplete) {
+        // 如果还没触发切换（理论上不应该发生），在这里触发
+        if (!hasTriggeredSwitch && onComplete) {
           onComplete();
         }
       }
@@ -489,7 +562,7 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
   };
 
   /**
-   * 从zoom out状态恢复到正常FOV + fade in
+   * 从zoom out状态恢复到正常FOV + fade in（从50%开始）
    */
   const animateZoomRestore = (zoomOutFov: number, onComplete?: () => void) => {
     if (!cameraRef.current || !containerRef.current) return;
@@ -497,15 +570,15 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     const camera = cameraRef.current;
     const container = containerRef.current;
     const targetFov = 75; // 恢复到正常FOV
-    const duration = 2000; // 2秒动画
+    const duration = 2000; // 2秒动画，但从50%开始
     const startTime = Date.now();
 
     console.log(`🔍 Starting zoom restore + fade in animation from zoom-out FOV ${zoomOutFov.toFixed(1)}° to normal FOV ${targetFov.toFixed(1)}°`);
 
-    // 立即设置起始FOV（zoom out状态）和透明度为0
+    // 立即设置起始FOV（zoom out状态）和透明度为50%
     camera.fov = zoomOutFov;
     camera.updateProjectionMatrix();
-    container.style.opacity = '0';
+    container.style.opacity = '0.5'; // 从50%开始，确保无黑屏
 
     const animate = () => {
       const elapsed = Date.now() - startTime;
@@ -521,8 +594,8 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       camera.fov = currentFov;
       camera.updateProjectionMatrix();
 
-      // 同时进行fade in（透明度从0到1）
-      const opacity = progress;
+      // fade in从50%到100%（确保A+B总opacity=100%）
+      const opacity = 0.5 + (0.5 * progress);
       container.style.opacity = opacity.toString();
 
       if (progress < 1) {
