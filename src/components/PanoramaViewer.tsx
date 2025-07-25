@@ -364,7 +364,31 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     // 设置相机朝向
     camera.lookAt(x, y, z);
 
-    console.log(`Camera rotation: lon=${lon}°, lat=${lat}° → lookAt(${x.toFixed(3)}, ${y.toFixed(3)}, ${z.toFixed(3)})`);
+    // 只在非拖拽时打印日志（避免拖拽时的大量日志）
+    // console.log(`Camera rotation: lon=${lon}°, lat=${lat}° → lookAt(${x.toFixed(3)}, ${y.toFixed(3)}, ${z.toFixed(3)})`);
+  };
+
+  /**
+   * 计算最短旋转路径
+   */
+  const getShortestRotationPath = (startAngle: { lon: number; lat: number }, targetAngle: { lon: number; lat: number }) => {
+    let lonDiff = targetAngle.lon - startAngle.lon;
+    let latDiff = targetAngle.lat - startAngle.lat;
+
+    // 处理lon的360度循环，选择最短路径
+    if (lonDiff > 180) {
+      lonDiff -= 360;
+    } else if (lonDiff < -180) {
+      lonDiff += 360;
+    }
+
+    // lat通常不需要循环处理，因为范围是-85到85
+    return {
+      lonDiff,
+      latDiff,
+      targetLon: startAngle.lon + lonDiff,
+      targetLat: startAngle.lat + latDiff
+    };
   };
 
   /**
@@ -372,10 +396,15 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
    */
   const animateToViewAngle = (targetAngle: { lon: number; lat: number }, onComplete?: () => void) => {
     const startAngle = { ...viewAngleRef.current };
+
+    // 计算最短旋转路径
+    const shortestPath = getShortestRotationPath(startAngle, targetAngle);
+
     const duration = 800; // 动画持续时间（毫秒）
     const startTime = Date.now();
 
-    console.log(`🎬 Starting rotation animation from (${startAngle.lon.toFixed(1)}°, ${startAngle.lat.toFixed(1)}°) to (${targetAngle.lon.toFixed(1)}°, ${targetAngle.lat.toFixed(1)}°)`);
+    console.log(`🎬 Starting rotation animation from (${startAngle.lon.toFixed(1)}°, ${startAngle.lat.toFixed(1)}°) to (${shortestPath.targetLon.toFixed(1)}°, ${shortestPath.targetLat.toFixed(1)}°)`);
+    console.log(`📐 Shortest path: lon ${shortestPath.lonDiff.toFixed(1)}°, lat ${shortestPath.latDiff.toFixed(1)}°`);
 
     const animate = () => {
       const elapsed = Date.now() - startTime;
@@ -386,9 +415,9 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
         ? 4 * progress * progress * progress
         : 1 - Math.pow(-2 * progress + 2, 3) / 2;
 
-      // 计算当前角度
-      const currentLon = startAngle.lon + (targetAngle.lon - startAngle.lon) * easeProgress;
-      const currentLat = startAngle.lat + (targetAngle.lat - startAngle.lat) * easeProgress;
+      // 计算当前角度（使用最短路径）
+      const currentLon = startAngle.lon + shortestPath.lonDiff * easeProgress;
+      const currentLat = startAngle.lat + shortestPath.latDiff * easeProgress;
 
       // 更新视角
       viewAngleRef.current = { lon: currentLon, lat: currentLat };
@@ -540,6 +569,11 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
 
 
     const onMouseUp = () => {
+      if (isMouseDown && isDragging) {
+        // 拖拽完成，打印最终旋转量
+        const finalAngle = viewAngleRef.current;
+        console.log(`🎯 Drag completed: Final rotation lon=${finalAngle.lon.toFixed(1)}°, lat=${finalAngle.lat.toFixed(1)}°`);
+      }
       isMouseDown = false;
       canvas.style.cursor = 'grab';
     };
