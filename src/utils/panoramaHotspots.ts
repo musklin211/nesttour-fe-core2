@@ -333,6 +333,30 @@ export class PanoramaHotspotManager {
   }
 
   /**
+   * 隐藏所有hotspots
+   */
+  public hideAllHotspots(): void {
+    this.hotspots.forEach(hotspot => {
+      if (hotspot.group) {
+        hotspot.group.visible = false;
+      }
+    });
+    console.log(`👻 Hidden ${this.hotspots.length} hotspots`);
+  }
+
+  /**
+   * 显示所有hotspots
+   */
+  public showAllHotspots(): void {
+    this.hotspots.forEach(hotspot => {
+      if (hotspot.group) {
+        hotspot.group.visible = true;
+      }
+    });
+    console.log(`👁️ Shown ${this.hotspots.length} hotspots`);
+  }
+
+  /**
    * 销毁管理器
    */
   public dispose(): void {

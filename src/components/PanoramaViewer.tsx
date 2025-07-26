@@ -48,6 +48,16 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
   // 预加载纹理缓存
   const preloadedTexturesRef = useRef<Map<number, THREE.Texture>>(new Map());
 
+  // 预加载场景缓存
+  const preloadedScenesRef = useRef<Map<number, {
+    scene: THREE.Scene;
+    camera: THREE.PerspectiveCamera;
+    renderer: THREE.WebGLRenderer;
+    sphere: THREE.Mesh;
+    hotspotManager: PanoramaHotspotManager;
+    cameraData: any; // 保存相机数据
+  }>>(new Map());
+
   // 视角状态 - 使用ref存储实时值，state用于传递给父组件
   const viewAngleRef = useRef({
     lon: initialViewAngle?.lon ?? 0,
@@ -113,7 +123,7 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     });
   }, [tourData]);
 
-  // 处理hotspot点击
+  // 处理hotspot点击 - 提前声明
   const handleHotspotClick = useCallback((targetCameraId: number, targetViewAngle?: { lon: number; lat: number }, distance?: number) => {
     if (!targetViewAngle) {
       // 如果没有目标视角，使用当前视角
@@ -126,6 +136,12 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     }
 
     console.log(`🎯 3D Hotspot clicked: rotating to target view angle lon=${targetViewAngle.lon.toFixed(1)}°, lat=${targetViewAngle.lat.toFixed(1)}°, distance=${distance?.toFixed(2)}`);
+
+    // 立即隐藏所有hotspots
+    if (hotspotManagerRef.current) {
+      hotspotManagerRef.current.hideAllHotspots();
+      console.log(`👻 All hotspots hidden for transition`);
+    }
 
     // 立即开始预加载目标纹理
     preloadTexture(targetCameraId).catch(error => {
@@ -143,6 +159,9 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
         // zoom in到一半时开始切换相机，使用视觉距离计算
         const symmetricZoomOutFov = calculateSymmetricZoomOutFov(distance || 3.0);
 
+        // 预加载完整场景
+        preloadCompleteScene(targetCameraId, targetViewAngle, symmetricZoomOutFov);
+
         console.log(`🔄 Zoom in halfway completed, starting crossfade transition. A reached FOV ${zoomFov.toFixed(1)}°, B will start with zoom out FOV ${symmetricZoomOutFov.toFixed(1)}°`);
         if (onCameraSwitch) {
           onCameraSwitch(targetCameraId, targetViewAngle, symmetricZoomOutFov);
@@ -150,6 +169,74 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       });
     });
   }, [onCameraSwitch]);
+
+  /**
+   * 预加载完整的全景图场景
+   */
+  const preloadCompleteScene = useCallback(async (targetCameraId: number, targetViewAngle: { lon: number; lat: number }, zoomOutFov: number) => {
+    try {
+      // 检查是否已经预加载过
+      if (preloadedScenesRef.current.has(targetCameraId)) {
+        console.log(`📦 Scene already preloaded for camera ${targetCameraId}`);
+        return;
+      }
+
+      console.log(`🚀 Preloading complete scene for camera ${targetCameraId}`);
+
+      // 确保纹理已预加载
+      const texture = await preloadTexture(targetCameraId);
+
+      // 查找目标相机数据
+      const targetCamera = tourData?.cameras.find(cam => cam.id === targetCameraId);
+      if (!targetCamera) {
+        throw new Error(`Camera ${targetCameraId} not found`);
+      }
+
+      // 创建新的场景
+      const scene = new THREE.Scene();
+
+      // 创建相机
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 0, 0.1);
+
+      // 设置初始视角和zoom状态
+      camera.fov = zoomOutFov;
+      camera.updateProjectionMatrix();
+
+      // 创建渲染器
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      // 创建球体
+      const geometry = new THREE.SphereGeometry(500, 60, 40);
+      geometry.scale(-1, 1, 1);
+      const material = new THREE.MeshBasicMaterial({ map: texture });
+      const sphere = new THREE.Mesh(geometry, material);
+      scene.add(sphere);
+
+      // 创建hotspot管理器并初始化hotspots
+      const hotspotManager = new PanoramaHotspotManager(scene, handleHotspotClick);
+
+      // 设置相机朝向
+      updateCameraRotation(camera, targetViewAngle.lon, targetViewAngle.lat);
+
+      // 缓存完整场景
+      preloadedScenesRef.current.set(targetCameraId, {
+        scene,
+        camera,
+        renderer,
+        sphere,
+        hotspotManager,
+        cameraData: targetCamera // 保存相机数据用于hotspot初始化
+      });
+
+      console.log(`✅ Complete scene preloaded for camera ${targetCameraId}`);
+
+    } catch (error) {
+      console.error(`❌ Failed to preload scene for camera ${targetCameraId}:`, error);
+    }
+  }, [tourData, handleHotspotClick, preloadTexture]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -209,6 +296,54 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     try {
       console.log(`🚀 Initializing panorama for camera ${cameraId}`);
       setState(prev => ({ ...prev, isLoading: true, error: null, loadingProgress: 0 }));
+
+      // 检查是否有预加载的场景
+      const preloadedScene = preloadedScenesRef.current.get(cameraId);
+      if (preloadedScene) {
+        console.log(`📦 Using preloaded scene for camera ${cameraId}`);
+
+        // 使用预加载的场景
+        sceneRef.current = preloadedScene.scene;
+        cameraRef.current = preloadedScene.camera;
+        rendererRef.current = preloadedScene.renderer;
+        sphereRef.current = preloadedScene.sphere;
+        hotspotManagerRef.current = preloadedScene.hotspotManager;
+
+        // 添加到DOM
+        if (containerRef.current) {
+          containerRef.current.innerHTML = '';
+          containerRef.current.appendChild(preloadedScene.renderer.domElement);
+        }
+
+        // 设置鼠标控制
+        setupMouseControls(preloadedScene.camera, preloadedScene.renderer.domElement);
+
+        // 开始渲染循环
+        startRenderLoop();
+
+        setState(prev => ({ ...prev, isLoading: false, loadingProgress: 100 }));
+
+        // 初始化hotspots但保持隐藏状态
+        if (tourData && preloadedScene.cameraData) {
+          setTimeout(() => {
+            preloadedScene.hotspotManager.updateHotspots(preloadedScene.cameraData, tourData.cameras, 5);
+            // 立即隐藏hotspots，等fade in完成后再显示
+            preloadedScene.hotspotManager.hideAllHotspots();
+            console.log(`🎯 Hotspots initialized for preloaded scene camera ${cameraId} (hidden for transition)`);
+          }, 100);
+        }
+
+        // 如果有初始zoom FOV，启动zoom恢复动画
+        if (initialZoomFov) {
+          console.log(`🎬 Starting with zoom restore animation from zoom-out FOV ${initialZoomFov.toFixed(1)}°`);
+          animateZoomRestore(initialZoomFov);
+        }
+
+        // 从缓存中移除（避免重复使用）
+        preloadedScenesRef.current.delete(cameraId);
+
+        return;
+      }
 
       // 移除冗余的初始化日志
       // console.log('Initializing 360° panorama viewer for camera:', cameraId);
@@ -344,6 +479,12 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       setTimeout(() => {
         if (hotspotManagerRef.current && tourData) {
           hotspotManagerRef.current.updateHotspots(cameraData, tourData.cameras, 5);
+
+          // 如果是从其他场景切换过来的（有initialZoomFov），隐藏hotspots
+          if (initialZoomFov) {
+            hotspotManagerRef.current.hideAllHotspots();
+            console.log(`👻 Hotspots hidden for transition scene camera ${cameraId}`);
+          }
         }
       }, 100); // 延迟一点确保渲染完成
 
@@ -421,19 +562,19 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
   };
 
   /**
-   * 计算B的起始zoom FOV（与A的最终状态匹配）
+   * 计算B的起始zoom FOV（与A的最终状态完全对称）
    */
   const calculateSymmetricZoomOutFov = (distance: number): number => {
     const normalFov = 75;
 
-    // B的起始状态应该与A的最终状态相同
+    // A的最终FOV状态（完全zoom in）
     const aFinalFov = calculateVisualApproachZoom(distance, 1.0);
-    const aZoomAmount = normalFov - aFinalFov;
+    const aZoomAmount = normalFov - aFinalFov; // A的总zoom变化量
 
-    // B的起始FOV = 正常FOV + 相同的zoom量
+    // B的起始FOV应该与A的最终状态完全对称
     const symmetricZoomOutFov = normalFov + aZoomAmount;
 
-    console.log(`🔄 B calculation: distance=${distance.toFixed(2)} → A final FOV=${aFinalFov.toFixed(1)}° → A zoom amount=${aZoomAmount.toFixed(1)}° → B start FOV=${symmetricZoomOutFov.toFixed(1)}°`);
+    console.log(`🔄 B calculation: distance=${distance.toFixed(2)} → A final FOV: ${aFinalFov.toFixed(1)}° → A zoom amount: ${aZoomAmount.toFixed(1)}° → B start FOV: ${symmetricZoomOutFov.toFixed(1)}°`);
     return symmetricZoomOutFov;
   };
 
@@ -490,7 +631,7 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     // 计算最短旋转路径
     const shortestPath = getShortestRotationPath(startAngle, targetAngle);
 
-    const duration = 800; // 动画持续时间（毫秒）
+    const duration = 600; // 动画持续时间（毫秒）- 加快旋转
     const startTime = Date.now();
 
     console.log(`🎬 Starting rotation animation from (${startAngle.lon.toFixed(1)}°, ${startAngle.lat.toFixed(1)}°) to (${shortestPath.targetLon.toFixed(1)}°, ${shortestPath.targetLat.toFixed(1)}°)`);
@@ -540,7 +681,7 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     const camera = cameraRef.current;
     const container = containerRef.current;
     const startFov = camera.fov;
-    const duration = 2000; // 2秒动画
+    const duration = 1500; // 1.5秒动画 - 加快zoom in
     const startTime = Date.now();
     let hasTriggeredSwitch = false; // 标记是否已触发切换
 
@@ -589,10 +730,10 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
     const camera = cameraRef.current;
     const container = containerRef.current;
     const targetFov = 75; // 恢复到正常FOV
-    const duration = 2000; // 2秒动画，但从50%开始
+    const duration = 1500; // 1.5秒动画 - 加快zoom restore
     const startTime = Date.now();
 
-    console.log(`🔍 Starting zoom restore + fade in animation from zoom-out FOV ${zoomOutFov.toFixed(1)}° to normal FOV ${targetFov.toFixed(1)}°`);
+    console.log(`🔍 Starting zoom restore + fade in animation from zoom-out FOV ${zoomOutFov.toFixed(1)}° to normal FOV ${targetFov.toFixed(1)}° (overlapping with A fade out)`);
 
     // 立即设置起始FOV（zoom out状态）和透明度为0
     camera.fov = zoomOutFov;
@@ -621,6 +762,13 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
         requestAnimationFrame(animate);
       } else {
         console.log(`✅ Zoom restore + fade in animation completed, final FOV: ${currentFov.toFixed(1)}°, opacity: 1`);
+
+        // 重新显示所有hotspots
+        if (hotspotManagerRef.current) {
+          hotspotManagerRef.current.showAllHotspots();
+          console.log(`👁️ All hotspots shown after transition completed`);
+        }
+
         if (onComplete) {
           onComplete();
         }
